@@ -21,3 +21,8 @@ result2 = job2.result()
 df_test = result2.to_dataframe()
 
 print(df_test.head())
+
+# GCP SDK login:
+#   gcloud auth login
+# IDE login:
+#   gcloud auth application-default login
