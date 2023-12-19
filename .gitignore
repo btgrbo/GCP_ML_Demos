@@ -136,3 +136,10 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# test data and tuning logs
+/python/demo1/test_data/
+/python/demo1/tuning_logs/
+
+# ignore pipeline file
+python/demo1/pipeline/pipeline.json

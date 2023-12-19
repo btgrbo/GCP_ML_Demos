@@ -1,0 +1,13 @@
+# training
+tensorflow==2.11.0
+tensorflow-io==0.31.0
+fire
+cloudml-hypertune
+
+# pipeline
+kfp
+datetime
+google
+google-cloud-aiplatform
+google-cloud-pipeline-components
+protobuf==3.19.6
