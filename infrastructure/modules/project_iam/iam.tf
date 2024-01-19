@@ -43,7 +43,10 @@ data "google_iam_policy" "project_iam" {
   }
   binding {
     role = "roles/logging.logWriter"
-    members = [for sa in var.vertex_executors : "serviceAccount:${sa.email}"]
+    members = concat(
+      [for sa in var.vertex_executors : "serviceAccount:${sa.email}"],
+      ["serviceAccount:${var.cloudbuild_sa.email}"],
+    )
   }
   binding {
     role = "roles/cloudbuild.builds.builder"
