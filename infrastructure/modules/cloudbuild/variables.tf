@@ -1,7 +1,3 @@
-variable "name" {
-  type = string
-}
-
 variable "project" {
   type = object({
     number = number
@@ -20,8 +16,4 @@ variable "labels" {
 
 variable "admins" {
     type = list(string)
-}
-
-variable "artifact_writers" {
-    type = list(object({email: string}))
 }

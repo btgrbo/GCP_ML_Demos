@@ -45,6 +45,10 @@ data "google_iam_policy" "project_iam" {
     role = "roles/logging.logWriter"
     members = [for sa in var.vertex_executors : "serviceAccount:${sa.email}"]
   }
+  binding {
+    role = "roles/cloudbuild.workerPoolUser"
+    members = ["serviceAccount:${var.cloudbuild_sa.email}"]
+  }
 }
 
 resource "google_project_iam_policy" "admins" {

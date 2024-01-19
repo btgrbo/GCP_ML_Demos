@@ -20,3 +20,9 @@ variable "vertex_executors" {
     email = string
   }))
 }
+
+variable "cloudbuild_sa" {
+  type = object({
+    email = string
+  })
+}

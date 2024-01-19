@@ -42,3 +42,14 @@ resource "google_service_account_iam_policy" "vertex_ai_runner_service_account" 
   service_account_id = google_service_account.vertex_executor.id
   policy_data        = data.google_iam_policy.vertex_ai_runner_service_account.policy_data
 }
+
+data "google_iam_policy" "registry" {
+  binding {
+    role    = "roles/artifactregistry.admin"
+    members = var.admins
+  }
+  binding {
+    role    = "roles/artifactregistry.writer"
+    members = [for sa in var.artifact_writers: "serviceAccount:${sa.email}"]
+  }
+}
