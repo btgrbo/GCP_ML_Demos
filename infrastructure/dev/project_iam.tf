@@ -5,4 +5,5 @@ module "proejct_iam" {
   project_admins     = local.admins
   aiplatform_service = module.services.aiplatform
   vertex_executors   = [module.demo1.vertex_executor_sa, module.demo2.vertex_executor_sa]
+  cloudbuild_sa      = module.cloudbuild.cloudbuild_sa
 }

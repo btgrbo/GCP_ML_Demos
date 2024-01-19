@@ -9,3 +9,11 @@ output "artifactregistry" {
 output "bigquery" {
   value = google_project_service.bigquery
 }
+
+output "cloudbuild" {
+  value = google_project_service.cloudbuild
+}
+
+output "dataflow" {
+  value = google_project_service.dataflow
+}
