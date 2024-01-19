@@ -55,3 +55,4 @@ check_pred = check_df[['label', 'prediction']]
 
 check_model = tf.keras.models.load_model(save_model_path)
 check_model.summary()
+
