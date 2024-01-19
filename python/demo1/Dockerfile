@@ -2,9 +2,8 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-RUN ls -l
+COPY python/demo1/requirements.txt requirements.txt
 
-COPY requirements.txt python/demo1/requirements.txt
 RUN pip install --upgrade pip
 
 RUN pip install -r requirements.txt
