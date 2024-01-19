@@ -2,8 +2,6 @@ options:
   logging: "CLOUD_LOGGING_ONLY"
 
 steps:
-  - name: 'list recursively'
-    args: [ 'ls', '-R' ]
 
   # Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
