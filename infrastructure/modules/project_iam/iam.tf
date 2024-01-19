@@ -56,6 +56,10 @@ data "google_iam_policy" "project_iam" {
     role = "roles/cloudbuild.workerPoolUser"
     members = ["serviceAccount:${var.cloudbuild_sa.email}"]
   }
+  binding {
+    role = "roles/cloudbuild.serviceAgent"
+    members = ["serviceAccount:service-${var.project.number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"]
+  }
 }
 
 resource "google_project_iam_policy" "admins" {
