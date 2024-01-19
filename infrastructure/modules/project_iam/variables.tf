@@ -26,3 +26,9 @@ variable "cloudbuild_sa" {
     email = string
   })
 }
+
+variable "dataflow_accounts" {
+  type = list(object({
+    email = string
+  }))
+}
