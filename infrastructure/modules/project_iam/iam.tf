@@ -46,6 +46,10 @@ data "google_iam_policy" "project_iam" {
     members = [for sa in var.vertex_executors : "serviceAccount:${sa.email}"]
   }
   binding {
+    role = "roles/cloudbuild.builds.builder"
+    members = ["serviceAccount:${var.cloudbuild_sa.email}"]
+  }
+  binding {
     role = "roles/cloudbuild.workerPoolUser"
     members = ["serviceAccount:${var.cloudbuild_sa.email}"]
   }
