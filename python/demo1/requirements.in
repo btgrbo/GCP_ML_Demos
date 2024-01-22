@@ -11,3 +11,4 @@ google
 google-cloud-aiplatform
 google-cloud-pipeline-components
 protobuf==3.19.6
+requests-toolbelt==0.10.1
