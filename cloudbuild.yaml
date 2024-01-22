@@ -27,19 +27,11 @@ steps:
     args: ['push', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/kfp_pipeline:latest']
     waitFor: ['Step2']
 
-  # Pause step
-  - id: 'Step4'
-    name: 'ubuntu'
-    entrypoint: 'sh'
-    args: [ '-c', 'sleep 30' ]
-    waitFor: ['Step2', 'Step3']
-
   # Step to run the image
-  - id: 'Step5'
-    name: 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/kfp_pipeline:latest'
-    entrypoint: 'sh'
-    args: ['-c', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/kfp_pipeline:latest']
-    waitFor: ['Step2', 'Step3', 'Step4']
+  - id: 'Step4'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['run', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/kfp_pipeline:latest']
+    waitFor: ['Step2', 'Step3']
 
 
 # Images to be stored in Artifact Registry
