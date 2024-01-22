@@ -4,34 +4,34 @@ options:
 steps:
 
   # Build the Docker image
-  - id: 'Step0'
-    name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:latest', '-f', 'python/demo1/Dockerfile', '.']
-    waitFor: ['-']
-
-  # Push the Docker image to Artifact Registry
-  - id: 'Step1'
-    name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:latest']
-    waitFor: ['Step0']
-
-  # Step to build the Docker image for the kubflow pipeline
-  - id: 'Step2'
-    name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/kfp_pipeline:latest', '-f', 'python/demo1/pipeline/Dockerfile', '.']
-    waitFor: ['-']
-
-  # Step to push the image to Google Artifact Registry
-  - id: 'Step3'
-    name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/kfp_pipeline:latest']
-    waitFor: ['Step2']
+#  - id: 'Step0'
+#    name: 'gcr.io/cloud-builders/docker'
+#    args: ['build', '-t', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:latest', '-f', 'python/demo1/Dockerfile', '.']
+#    waitFor: ['-']
+#
+#  # Push the Docker image to Artifact Registry
+#  - id: 'Step1'
+#    name: 'gcr.io/cloud-builders/docker'
+#    args: ['push', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:latest']
+#    waitFor: ['Step0']
+#
+#  # Step to build the Docker image for the kubflow pipeline
+#  - id: 'Step2'
+#    name: 'gcr.io/cloud-builders/docker'
+#    args: ['build', '-t', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/kfp_pipeline:latest', '-f', 'python/demo1/pipeline/Dockerfile', '.']
+#    waitFor: ['-']
+#
+#  # Step to push the image to Google Artifact Registry
+#  - id: 'Step3'
+#    name: 'gcr.io/cloud-builders/docker'
+#    args: ['push', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/kfp_pipeline:latest']
+#    waitFor: ['Step2']
 
   # Step to run the image
   - id: 'Step4'
     name: 'gcr.io/cloud-builders/docker'
     args: ['run', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/kfp_pipeline:latest']
-    waitFor: ['Step2', 'Step3']
+    #waitFor: ['Step2', 'Step3']
 
 
 # Images to be stored in Artifact Registry

@@ -69,6 +69,10 @@ data "google_iam_policy" "project_iam" {
     role    = "roles/aiplatform.user"
     members = ["serviceAccount:${var.cloudbuild_sa.email}"]
   }
+  binding {
+    role    = "roles/storage.objectViewer"
+    members = ["serviceAccount:${var.cloudbuild_sa.email}"]
+  }
 }
 
 resource "google_project_iam_policy" "admins" {
