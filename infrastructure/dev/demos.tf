@@ -14,6 +14,24 @@ module "demo1" {
   ]
 }
 
+
+module "demo1_infra" {
+  source = "../modules/demo1_infra"
+
+  labels            = local.labels
+  location          = local.location
+  project           = data.google_project.default
+  admins            = local.admins
+  publishers        = []
+  subscribers       = []
+  dataflow_invokers = [module.demo1.vertex_executor_sa]
+
+  depends_on = [
+    module.services.aiplatform,
+    module.services.artifactregistry,
+  ]
+}
+
 module "demo2" {
   source = "../modules/ml-environment"
 
