@@ -4,15 +4,15 @@ options:
 steps:
 
   # Build the Docker image
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:latest', '-f', 'python/demo1/Dockerfile', '.']
+  #- name: 'gcr.io/cloud-builders/docker'
+  #  args: ['build', '-t', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:latest', '-f', 'python/demo1/Dockerfile', '.']
 
   # Push the Docker image to Artifact Registry
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:latest']
+  #- name: 'gcr.io/cloud-builders/docker'
+  #  args: ['push', 'europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:latest']
 
   # Step to install Python packages and run kubeflow pipeline
-  - name: 'python:3.10'
+  - name: 'python:3.10-slim'
     entrypoint: 'sh'
     args: ['-c', 'pip install -r python/demo1/requirements.txt && python python/demo1/pipeline/pipeline.py']
 
