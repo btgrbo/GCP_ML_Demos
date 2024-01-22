@@ -65,6 +65,10 @@ data "google_iam_policy" "project_iam" {
     role = "roles/cloudbuild.serviceAgent"
     members = ["serviceAccount:service-${var.project.number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"]
   }
+  binding {
+  role = "roles/artifactregistry.writer"
+  members = [for sa in var.vertex_executors : "serviceAccount:${sa.email}"]
+  }
 }
 
 resource "google_project_iam_policy" "admins" {
