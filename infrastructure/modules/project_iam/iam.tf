@@ -32,8 +32,7 @@ data "google_iam_policy" "project_iam" {
   }
   binding {
     role    = "roles/aiplatform.user"
-    members = concat([for sa in var.vertex_executors : "serviceAccount:${sa.email}"],
-                     ["serviceAccount:${var.cloudbuild_sa.email}"])
+    members = [for sa in var.vertex_executors : "serviceAccount:${sa.email}"]
   }
   binding {
     role    = "roles/aiplatform.customCodeServiceAgent"
