@@ -1,7 +1,6 @@
 import hypertune
 import os
 import tensorflow as tf
-import tensorflow_io as tfio
 from fire import Fire
 
 
@@ -15,51 +14,59 @@ def define_model_vars():
     return batch_size, epochs, optimizer, loss
 
 
-# Transform the IODataset
 def preprocess(features):
-    # Extract the label
-    label = features[b'label']
 
-    # Extract all features from the OrderedDict
-    processed_features = {key: features[key] for key in features.keys() if key != b'label'}
+    # Define parsing schema
+    keys_to_features = {
+        'trip_seconds': tf.io.FixedLenFeature([], tf.float32),
+        'payment_type': tf.io.VarLenFeature(tf.float32),
+    }
 
-    # dict to list
-    tensors = list(processed_features.values())
+    # Load one example
+    parsed_features = tf.io.parse_single_example(features, keys_to_features)
 
-    # Convert all tensors to a common data type and stack to single tensor
-    tensors = [tf.cast(tensor, dtype=tf.float32) for tensor in tensors]
-    stacked_tensor = tf.stack(tensors, axis=-1)
+    # process label
+    label = parsed_features['trip_seconds'] #todo replace by correct label
+    label = tf.reshape(label, [1])
 
-    return stacked_tensor, label
+    # Convert from a SparseTensor to a dense tensor
+    parsed_features['payment_type'] = tf.sparse.to_dense(parsed_features['payment_type'])
+
+    # reshape and concat tensors
+    parsed_features['trip_seconds'] = tf.reshape(parsed_features['trip_seconds'], [1])
+    tensors = list(parsed_features.values())
+    tensors = tf.concat(tensors, axis=-1)
+    tensors = tf.reshape(tensors, [-1,])
+
+    return tensors, label
 
 
-def load_raw_data(train_file_parquet, eval_file_parquet):
-    iodataset_train = tfio.experimental.IODataset.from_parquet(train_file_parquet)
-    iodataset_eval = tfio.experimental.IODataset.from_parquet(eval_file_parquet)
+def load_raw_data(tft_record_path):
 
-    return iodataset_train, iodataset_eval
+    iodataset_train = tf.data.TFRecordDataset(tft_record_path)
+
+    return iodataset_train
 
 
-def define_datasets(iodataset_train, iodataset_eval, batch_size, epochs):
+def define_datasets(iodataset_train, batch_size, epochs):
+
     # map preprocessing to datasets
     iodataset_train_proc = iodataset_train.map(preprocess)
-    iodataset_eval_proc = iodataset_eval.map(preprocess)
 
     # Shuffle and batch the dataset
     iodataset_train_proc = iodataset_train_proc.shuffle(buffer_size=batch_size * 10).batch(batch_size)
-    iodataset_eval_proc = iodataset_eval_proc.shuffle(buffer_size=batch_size * 10).batch(batch_size)
 
     # Repeat for the specified number of epochs
     iodataset_train_proc = iodataset_train_proc.repeat(epochs)
-    iodataset_eval_proc = iodataset_eval_proc.repeat(epochs)
 
-    return iodataset_train_proc, iodataset_eval_proc
+    return iodataset_train_proc
 
 
 def build_model():
+
     # Build a neural network model using TensorFlow and Keras
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.layers.Dense(128, activation='relu'))
+    model.add(tf.keras.layers.Dense(128, activation='relu', input_shape=(5,)))
     model.add(tf.keras.layers.Dense(64, activation='relu'))
     model.add(tf.keras.layers.Dense(32, activation='relu'))
     model.add(tf.keras.layers.Dense(1, activation='linear'))
@@ -85,17 +92,17 @@ def save_model(model, model_file):
 
 
 def main(
-        train_file_parquet: str,
-        eval_file_parquet: str,
+        train_file_path: str,
         learning_rate: float,
 ):
 
     batch_size, epochs, optimizer, loss = define_model_vars()
-    iodataset_train, iodataset_eval = load_raw_data(train_file_parquet, eval_file_parquet)
-    iodataset_train_proc, iodataset_eval_proc = define_datasets(iodataset_train, iodataset_eval, batch_size, epochs)
+    iodataset_train = load_raw_data(train_file_path)
+    iodataset_train_proc = define_datasets(iodataset_train, batch_size, epochs)
     model = build_model()
     compile_model(model, optimizer, learning_rate, loss)
-    history = fit_model(model, iodataset_train_proc, epochs, iodataset_eval_proc)
+    history = fit_model(model, iodataset_train_proc.take(int(batch_size*0.8)), epochs,
+                        iodataset_train_proc.skip(int(batch_size*0.8)))
     hp_metric = history.history['val_loss'][-1]
     hpt = hypertune.HyperTune()
     hpt.report_hyperparameter_tuning_metric(
