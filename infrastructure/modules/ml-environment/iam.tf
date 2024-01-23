@@ -3,8 +3,7 @@ data "google_iam_policy" "storage" {
     role    = "roles/storage.objectAdmin"
     members = concat(
       ["serviceAccount:${google_service_account.vertex_executor.email}"],
-      var.admins,
-      [for sa in var.artifact_writers: "serviceAccount:${sa.email}"]
+      var.admins
     )
   }
   binding {
