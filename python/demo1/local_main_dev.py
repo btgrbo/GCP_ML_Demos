@@ -2,18 +2,20 @@ import pandas as pd
 import tensorflow as tf
 import hypertune
 from google.cloud import bigquery
-from main import (define_datasets, define_model_vars, load_raw_data, build_model, compile_model, save_model, fit_model,
-                  export_predictions)
+from python.demo1.main import (define_datasets, define_model_vars, load_raw_data, build_model, compile_model,
+                               save_model, fit_model)
 
 # define variables
 limit = 100000
 gcp_input_table_train: str = 'bt-int-ml-specialization.demo1.taxi_trips_model_input_train'
 gcp_input_table_eval: str = 'bt-int-ml-specialization.demo1.taxi_trips_model_input_eval'
 client = bigquery.Client(project='bt-int-ml-specialization')
-parquet_file_path_train = './GCP%20ML%20Demos/python/demo1/test_data/train_parquet_file.parquet'
-parquet_file_path_eval = './GCP%20ML%20Demos/python/demo1/test_data/eval_parquet_file.parquet'
-parquet_file_path_pred = './GCP%20ML%20Demos/python/demo1/test_data/pred_parquet_file.parquet'
-save_model_path = './GCP%20ML%20Demos/python/demo1/test_data/saved_model.keras'
+parquet_file_path_train = './python/demo1/test_data/train_parquet_file.parquet'
+parquet_file_path_eval = './python/demo1/test_data/eval_parquet_file.parquet'
+parquet_file_path_pred = './python/demo1/test_data/pred_parquet_file.parquet'
+save_model_path = './python/demo1/test_data/saved_model.keras'
+tft_record_path = './python/demo1/test_data/TFRecords_run_2024-01-23T09_04_12.454152-00000-of-00001.tfrecord'
+tft_record_path_bucket = 'gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-01-23T09:04:12.454152-00000-of-00001.tfrecord'
 
 # save training data as parquet
 query_str = f"select * from {gcp_input_table_train} limit {limit}"
@@ -32,11 +34,22 @@ df.to_parquet(parquet_file_path_eval)
 learning_rate = 0.0001
 
 batch_size, epochs, optimizer, loss = define_model_vars()
-iodataset_train, iodataset_eval = load_raw_data(parquet_file_path_train, parquet_file_path_eval)
-iodataset_train_proc, iodataset_eval_proc = define_datasets(iodataset_train, iodataset_eval, batch_size, epochs)
+iodataset_train = load_raw_data(tft_record_path_bucket)
+iodataset_train_proc = define_datasets(iodataset_train, batch_size, epochs)
+
+for raw_record in iodataset_train.take(1):
+    example = tf.train.Example()
+    example.ParseFromString(raw_record.numpy())
+    #tf.io.decode_raw(example, tf.uint8)
+    print(example)
+
+for i in iodataset_train_proc.take(1):
+    print(i)
+
 model = build_model()
 compile_model(model, optimizer, learning_rate, loss)
-history = fit_model(model, iodataset_train_proc, epochs, iodataset_eval_proc)
+history = fit_model(model, iodataset_train_proc.take(int(batch_size*0.8)), epochs,
+                    iodataset_train_proc.skip(int(batch_size*0.8)))
 hp_metric = history.history['val_loss'][-1]
 hpt = hypertune.HyperTune()
 hpt.report_hyperparameter_tuning_metric(
@@ -46,13 +59,11 @@ hpt.report_hyperparameter_tuning_metric(
 )
 
 
-fit_model(model, iodataset_train_proc, epochs, iodataset_eval_proc)
+fit_model(model, iodataset_train_proc, epochs)
 save_model(model, save_model_path)
-export_predictions(iodataset_eval, batch_size, model, parquet_file_path_pred)
 
 check_df = pd.read_parquet(parquet_file_path_pred)
 check_pred = check_df[['label', 'prediction']]
 
 check_model = tf.keras.models.load_model(save_model_path)
 check_model.summary()
-

@@ -95,10 +95,8 @@ def pipeline(display_name: str = "demo1",
         "/app/main.py"
     ]
     args = [
-        "--train_file_parquet",
-        "gs://bt-int-ml-specialization-ml-demo1/data/taxi_trips/taxi_trips_model_input_train.parquet",
-        "--eval_file_parquet",
-        "gs://bt-int-ml-specialization-ml-demo1/data/taxi_trips/taxi_trips_model_input_eval.parquet"
+        "--train_file_path",
+        "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-01-23T09:04:12.454152-00000-of-00001.tfrecord"
     ]
 
     # The spec of the worker pools including machine type and Docker image
