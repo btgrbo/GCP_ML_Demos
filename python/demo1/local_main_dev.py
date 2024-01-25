@@ -14,8 +14,8 @@ parquet_file_path_train = './python/demo1/test_data/train_parquet_file.parquet'
 parquet_file_path_eval = './python/demo1/test_data/eval_parquet_file.parquet'
 parquet_file_path_pred = './python/demo1/test_data/pred_parquet_file.parquet'
 save_model_path = './python/demo1/test_data/saved_model.keras'
-tft_record_path = ('./python/demo1/test_data/TFRecords_run_2024-01-20T15_52_24.728093-00000-of-00001'
-                   '.tfrecord')
+tft_record_path = './python/demo1/test_data/TFRecords_run_2024-01-23T09_04_12.454152-00000-of-00001.tfrecord'
+tft_record_path_bucket = 'gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-01-23T09:04:12.454152-00000-of-00001.tfrecord'
 
 # save training data as parquet
 query_str = f"select * from {gcp_input_table_train} limit {limit}"
@@ -34,9 +34,17 @@ df.to_parquet(parquet_file_path_eval)
 learning_rate = 0.0001
 
 batch_size, epochs, optimizer, loss = define_model_vars()
-iodataset_train = load_raw_data(tft_record_path)
+iodataset_train = load_raw_data(tft_record_path_bucket)
 iodataset_train_proc = define_datasets(iodataset_train, batch_size, epochs)
 
+for raw_record in iodataset_train.take(1):
+    example = tf.train.Example()
+    example.ParseFromString(raw_record.numpy())
+    #tf.io.decode_raw(example, tf.uint8)
+    print(example)
+
+for i in iodataset_train_proc.take(1):
+    print(i)
 
 model = build_model()
 compile_model(model, optimizer, learning_rate, loss)
