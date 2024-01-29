@@ -32,10 +32,10 @@ df_cat['start_month'] = df['trip_start_datetime'].dt.month
 df_cat['start_day'] = df['trip_start_datetime'].dt.day
 df_cat['start_hour'] = df['trip_start_datetime'].dt.hour
 df_cat['start_minute'] = df['trip_start_datetime'].dt.minute
-#df_cat['pickup_census_tract'] = df['pickup_census_tract']
-#df_cat['dropoff_census_tract'] = df['dropoff_census_tract']
-#df_cat['pickup_community_area'] = df['pickup_community_area']
-#df_cat['dropoff_community_area'] = df['dropoff_community_area']
+df_cat['pickup_census_tract'] = df['pickup_census_tract']
+df_cat['dropoff_census_tract'] = df['dropoff_census_tract']
+df_cat['pickup_community_area'] = df['pickup_community_area']
+df_cat['dropoff_community_area'] = df['dropoff_community_area']
 
 # fit and transform the data
 df_ohe = pd.get_dummies(df_cat['day_of_week'], prefix='dow')
@@ -43,10 +43,10 @@ df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_month'], prefix='stmo')
 df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_day'], prefix='stda')], axis=1)
 df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_hour'], prefix='stho')], axis=1)
 df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_minute'], prefix='stmi')], axis=1)
-#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['pickup_census_tract'], prefix='pct')], axis=1)
-#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['dropoff_census_tract'], prefix='dct')], axis=1)
-#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['pickup_community_area'], prefix='pca')], axis=1)
-#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['dropoff_community_area'], prefix='dca')], axis=1)
+df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['pickup_census_tract'], prefix='pct')], axis=1)
+df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['dropoff_census_tract'], prefix='dct')], axis=1)
+df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['pickup_community_area'], prefix='pca')], axis=1)
+df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['dropoff_community_area'], prefix='dca')], axis=1)
 
 
 df_int = df[['fare', 'trip_seconds', 'trip_miles', 'pickup_latitude', 'pickup_longitude', 'dropoff_latitude',
@@ -99,7 +99,7 @@ X_train, X_test, y_train, y_test = train_test_split(data[:, 1:], data[:, 0], tes
 # Add layers to model
 # Add layers to model with L1 regularization
 model = tf.keras.models.Sequential()
-model.add(tf.keras.layers.Dense(128, activation='relu', input_shape=(82,), kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
+model.add(tf.keras.layers.Dense(128, activation='relu', input_shape=(788,), kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
 model.add(tf.keras.layers.Dropout(0.2))
 model.add(tf.keras.layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
 model.add(tf.keras.layers.Dropout(0.2))
