@@ -9,8 +9,10 @@ from sklearn.inspection import permutation_importance
 import numpy as np
 
 # define variables
-limit = 1000000
+limit = 100000
 learning_rate = 0.001
+l1_reg = 0# 0.01
+l2_reg = 0 #.01
 data: str = '`bt-int-ml-specialization.demo1.taxi_trips`'
 client = bigquery.Client(project='bt-int-ml-specialization')
 
@@ -52,9 +54,9 @@ df_int = df[['fare', 'trip_seconds', 'trip_miles', 'pickup_latitude', 'pickup_lo
 df_selected = pd.concat([df_int, df_ohe], axis=1)
 df_selected = df_selected.astype(float)
 
-df_selected[['trip_seconds', 'trip_miles', 'pickup_latitude', 'pickup_longitude', 'dropoff_latitude',
-             'dropoff_longitude']].fillna(df_selected[['trip_seconds', 'trip_miles', 'pickup_latitude', 'pickup_longitude',
-                                           'dropoff_latitude', 'dropoff_longitude']].mean(), inplace=True)
+#df_selected[['trip_seconds', 'trip_miles', 'pickup_latitude', 'pickup_longitude', 'dropoff_latitude',
+#             'dropoff_longitude']].fillna(df_selected[['trip_seconds', 'trip_miles', 'pickup_latitude', 'pickup_longitude',
+#                                           'dropoff_latitude', 'dropoff_longitude']].mean(), inplace=True)
 df_selected = df_selected.dropna() #df_selected.fillna(np.nan)
 df_selected = df_selected[(df_selected[['fare', 'trip_seconds', 'trip_miles']] > 0).all(axis=1)]
 df_selected = df_selected[df_selected['fare'] < 80]
@@ -95,14 +97,15 @@ data = df_selected.values
 X_train, X_test, y_train, y_test = train_test_split(data[:, 1:], data[:, 0], test_size=0.2)
 
 # Add layers to model
+# Add layers to model with L1 regularization
 model = tf.keras.models.Sequential()
-model.add(tf.keras.layers.Dense(128, activation='relu', input_shape=(84,)))
-model.add(tf.keras.layers.Dropout(0.1))
-model.add(tf.keras.layers.Dense(64, activation='relu'))
-model.add(tf.keras.layers.Dropout(0.1))
-model.add(tf.keras.layers.Dense(32, activation='relu'))
-model.add(tf.keras.layers.Dropout(0.1))
-model.add(tf.keras.layers.Dense(1, activation='linear'))
+model.add(tf.keras.layers.Dense(128, activation='relu', input_shape=(82,), kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
+model.add(tf.keras.layers.Dropout(0.2))
+model.add(tf.keras.layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
+model.add(tf.keras.layers.Dropout(0.2))
+model.add(tf.keras.layers.Dense(32, activation='relu', kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
+model.add(tf.keras.layers.Dropout(0.2))
+model.add(tf.keras.layers.Dense(1, activation='linear', kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
 
 # Compile model
 model.compile(optimizer='adam', loss='mse', metrics='mse')
