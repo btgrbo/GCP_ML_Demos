@@ -9,17 +9,24 @@ from sklearn.inspection import permutation_importance
 import numpy as np
 
 # define variables
-limit = 100000
+limit = 1000000
 learning_rate = 0.001
-l1_reg = 0# 0.01
+l1_reg = 0.01
 l2_reg = 0 #.01
-data: str = '`bt-int-ml-specialization.demo1.taxi_trips`'
+data: str = '`bt-int-ml-specialization.demo1.taxi_trips_clean`'
 client = bigquery.Client(project='bt-int-ml-specialization')
 
+"""
 query_str = f"select * from {data} limit {limit}"
 job = client.query(query_str)
 result = job.result()
 df = result.to_dataframe()
+"""
+
+# save dataframe as parquet
+# df.to_parquet('python/demo1/test_data/train_clean.parquet')
+
+df = pd.read_parquet('python/demo1/test_data/train_clean.parquet')
 
 # check 0 entries
 #df[df['fare'] > 1000]
@@ -32,10 +39,10 @@ df_cat['start_month'] = df['trip_start_datetime'].dt.month
 df_cat['start_day'] = df['trip_start_datetime'].dt.day
 df_cat['start_hour'] = df['trip_start_datetime'].dt.hour
 df_cat['start_minute'] = df['trip_start_datetime'].dt.minute
-df_cat['pickup_census_tract'] = df['pickup_census_tract']
-df_cat['dropoff_census_tract'] = df['dropoff_census_tract']
-df_cat['pickup_community_area'] = df['pickup_community_area']
-df_cat['dropoff_community_area'] = df['dropoff_community_area']
+#df_cat['pickup_census_tract'] = df['pickup_census_tract']
+#df_cat['dropoff_census_tract'] = df['dropoff_census_tract']
+#df_cat['pickup_community_area'] = df['pickup_community_area']
+#df_cat['dropoff_community_area'] = df['dropoff_community_area']
 
 # fit and transform the data
 df_ohe = pd.get_dummies(df_cat['day_of_week'], prefix='dow')
@@ -43,10 +50,10 @@ df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_month'], prefix='stmo')
 df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_day'], prefix='stda')], axis=1)
 df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_hour'], prefix='stho')], axis=1)
 df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_minute'], prefix='stmi')], axis=1)
-df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['pickup_census_tract'], prefix='pct')], axis=1)
-df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['dropoff_census_tract'], prefix='dct')], axis=1)
-df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['pickup_community_area'], prefix='pca')], axis=1)
-df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['dropoff_community_area'], prefix='dca')], axis=1)
+#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['pickup_census_tract'], prefix='pct')], axis=1)
+#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['dropoff_census_tract'], prefix='dct')], axis=1)
+#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['pickup_community_area'], prefix='pca')], axis=1)
+#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['dropoff_community_area'], prefix='dca')], axis=1)
 
 
 df_int = df[['fare', 'trip_seconds', 'trip_miles', 'pickup_latitude', 'pickup_longitude', 'dropoff_latitude',
@@ -70,8 +77,8 @@ df_selected = df_selected[df_selected['trip_miles'] < 30]
 #df_selected['trip_seconds'].hist(bins=100)
 #plt.show()
 
-#df_selected['trip_miles'].hist(bins=100)
-#plt.show()
+df_selected['trip_miles'].hist(bins=100)
+plt.show()
 
 #df_selected['dropoff_longitude'].hist(bins=100)
 #plt.show()
@@ -99,13 +106,13 @@ X_train, X_test, y_train, y_test = train_test_split(data[:, 1:], data[:, 0], tes
 # Add layers to model
 # Add layers to model with L1 regularization
 model = tf.keras.models.Sequential()
-model.add(tf.keras.layers.Dense(128, activation='relu', input_shape=(788,), kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
-model.add(tf.keras.layers.Dropout(0.2))
-model.add(tf.keras.layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
-model.add(tf.keras.layers.Dropout(0.2))
-model.add(tf.keras.layers.Dense(32, activation='relu', kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
-model.add(tf.keras.layers.Dropout(0.2))
-model.add(tf.keras.layers.Dense(1, activation='linear', kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
+#model.add(tf.keras.layers.Dense(128, activation='relu', input_shape=(84,), kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
+#model.add(tf.keras.layers.Dropout(0.1))
+#model.add(tf.keras.layers.Dense(64, activation='relu', input_shape=(84,), kernel_regularizer=tf.keras.regularizers.l1(l1_reg)))
+#model.add(tf.keras.layers.Dropout(0.1))
+model.add(tf.keras.layers.Dense(32, activation='relu'))
+#model.add(tf.keras.layers.Dropout(0.1))
+model.add(tf.keras.layers.Dense(1, activation='linear'))
 
 # Compile model
 model.compile(optimizer='adam', loss='mse', metrics='mse')
