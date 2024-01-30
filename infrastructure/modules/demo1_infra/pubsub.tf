@@ -10,9 +10,6 @@ resource "google_pubsub_subscription" "event_source" {
   ack_deadline_seconds       = 20
   message_retention_duration = "1200s"
 
-  expiration_policy {
-    ttl = "300000s"
-  }
 }
 
 #############################################################
@@ -30,7 +27,4 @@ resource "google_pubsub_subscription" "event_sink" {
   ack_deadline_seconds       = 20
   message_retention_duration = "1200s"
 
-  expiration_policy {
-    ttl = "300000s"
-  }
 }
