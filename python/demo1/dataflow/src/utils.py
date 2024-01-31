@@ -9,6 +9,7 @@ from apache_beam import Row
 from apache_beam.ml import MLTransform
 from apache_beam.ml.transforms.tft import TFTOperation
 from google.cloud import storage
+from typing import Dict, Any
 
 
 def row_to_tf_example(event):
@@ -89,3 +90,23 @@ def download_transform_artifacts(gcs_path: str, local_path: str, project_id: str
             blob.download_to_filename(local_file_path)  # file
 
     _replace_artifact_location(local_path / "attributes.json")
+
+
+def add_date_info_fn(element: Dict[str, Any]) -> Dict[str, Any]:
+    # Check if 'trip_start_timestamp' is in the element
+    if 'trip_start_timestamp' in element:
+        # Extract the day of the week, month, and date
+        timestamp = element['trip_start_timestamp']
+        day_of_week = timestamp.weekday()
+        month = timestamp.month
+        date = timestamp.day
+
+        # Add the extracted information to the element
+        element['day_of_week'] = str(day_of_week)
+        element['start_month'] = str(month)
+        element['start_date'] = str(date)
+
+        # Remove the original 'trip_start_timestamp' field
+        del element['trip_start_timestamp']
+
+    return element

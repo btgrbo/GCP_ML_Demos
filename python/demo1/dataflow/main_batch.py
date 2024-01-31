@@ -13,14 +13,20 @@ from apache_beam.ml.transforms import tft
 from apache_beam.options.pipeline_options import PipelineOptions
 
 from src import utils
-from src.impute_fn import ImputeMean
 from src.one_hot_fn import OneHot
 
 # list all transform steps here:
 TRANSFORM_STEPS = [
-    ImputeMean(columns=['trip_seconds']),
-    tft.ScaleTo01(columns=['trip_seconds']),
-    OneHot(columns=['payment_type'])
+    tft.ScaleToZScore(columns=['trip_seconds']),
+    tft.ScaleToZScore(columns=['trip_miles']),
+    tft.ScaleToZScore(columns=['fare']),
+    tft.ScaleToZScore(columns=['pickup_latitude']),
+    tft.ScaleToZScore(columns=['pickup_longitude']),
+    tft.ScaleToZScore(columns=['dropoff_latitude']),
+    tft.ScaleToZScore(columns=['dropoff_longitude']),
+    OneHot(columns=['day_of_week']),
+    OneHot(columns=['start_month']),
+    OneHot(columns=['start_date'])
 ]
 
 
@@ -58,6 +64,7 @@ def main(argv=None):
         (
                 pipeline
                 | "ReadFromBigQuery" >> read_bq
+                | "AddDateInfo" >> beam.Map(utils.add_date_info_fn)
                 | "Transform" >> transform_fn
                 | "ConvertToTFExample" >> beam.Map(utils.row_to_tf_example)
                 | "WriteToTFRecord" >> write_tf_record
