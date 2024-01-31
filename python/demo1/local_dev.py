@@ -37,19 +37,20 @@ df_cat = pd.to_datetime(df['trip_start_timestamp']).dt.dayofweek.to_frame(name='
 df['trip_start_datetime'] = pd.to_datetime(df['trip_start_timestamp'])
 df_cat['start_month'] = df['trip_start_datetime'].dt.month
 df_cat['start_day'] = df['trip_start_datetime'].dt.day
-df_cat['start_hour'] = df['trip_start_datetime'].dt.hour
-df_cat['start_minute'] = df['trip_start_datetime'].dt.minute
+#df_cat['start_hour'] = df['trip_start_datetime'].dt.hour
+#df_cat['start_minute'] = df['trip_start_datetime'].dt.minute
 #df_cat['pickup_census_tract'] = df['pickup_census_tract']
 #df_cat['dropoff_census_tract'] = df['dropoff_census_tract']
 #df_cat['pickup_community_area'] = df['pickup_community_area']
 #df_cat['dropoff_community_area'] = df['dropoff_community_area']
 
 # fit and transform the data
-df_ohe = pd.get_dummies(df_cat['day_of_week'], prefix='dow')
-df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_month'], prefix='stmo')], axis=1)
-df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_day'], prefix='stda')], axis=1)
-df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_hour'], prefix='stho')], axis=1)
-df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_minute'], prefix='stmi')], axis=1)
+df_ohe = pd.get_dummies(df_cat['start_month'], prefix='stmo')
+#df_ohe = pd.get_dummies(df_cat['day_of_week'], prefix='dow')
+#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_month'], prefix='stmo')], axis=1)
+#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_day'], prefix='stda')], axis=1)
+#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_hour'], prefix='stho')], axis=1)
+#df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['start_minute'], prefix='stmi')], axis=1)
 #df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['pickup_census_tract'], prefix='pct')], axis=1)
 #df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['dropoff_census_tract'], prefix='dct')], axis=1)
 #df_ohe = pd.concat([df_ohe, pd.get_dummies(df_cat['pickup_community_area'], prefix='pca')], axis=1)
@@ -134,11 +135,12 @@ y_pred = model.predict(X_test)
 # calculate the R-squared value
 r2 = r2_score(y_test, y_pred)
 
-
-result = permutation_importance(model, X_test, y_test, n_repeats=10, random_state=0, scoring='r2')
+"""
+result = permutation_importance(model, X_test, y_test, n_repeats=5, random_state=0, scoring='r2', max_samples=100000)
 importance = result.importances_mean
 
 print(importance)
+np.sum(importance)
 
 sorted_idx = importance.argsort()[::-1]
 labels = df_selected.columns.array[1:]
@@ -149,4 +151,70 @@ plt.yticks(fontsize=12)
 plt.ylabel('Feature Importance', fontsize=12)
 plt.tight_layout()
 plt.savefig('feature_importance.png')
+plt.show()
+"""
+import numpy as np
+import pandas as pd
+from sklearn.metrics import accuracy_score
+
+# Sample model training and evaluation
+original_score =  r2_score(y_test, y_pred)
+
+labels = df_selected.columns.array[1:]
+
+# Create a DataFrame from the 2D NumPy array and labels
+X_test_df = pd.DataFrame(X_test, columns=labels)
+
+# Function to shuffle one-hot encoded columns by prefix
+def shuffle_columns_by_prefix(data, prefix):
+    cols = [col for col in data.columns if col.startswith(prefix)]
+    data_copy = data.copy()
+    shuffled_values = np.random.permutation(data_copy[cols].values)
+    data_copy[cols] = shuffled_values
+    return data_copy
+
+# List of prefixes for one-hot encoded variables
+prefixes = ['trip_seconds', 'trip_miles', 'pickup_latitude', 'pickup_longitude', 'dropoff_latitude',
+            'dropoff_longitude', 'dow', 'stmo', 'stda', 'stho', 'stmi']
+num_repetitions = 5  # Number of times to repeat the computation
+subset_fraction = 0.1  # Fraction of data to use for computation
+
+# Dictionary to store accumulated importance results
+accumulated_importances = {prefix: 0 for prefix in prefixes}
+
+# Repeat computation and accumulate importances
+for i in range(num_repetitions):
+    # Sample a subset of the data without replacement
+    X_test_subset = X_test_df.sample(frac=subset_fraction, replace=False)
+    y_test_subset = y_test[X_test_subset.index]
+
+    for prefix in prefixes:
+        print('repetition number:', i, 'prefix:', prefix)
+        shuffled_data = shuffle_columns_by_prefix(X_test_subset, prefix)
+        shuffled_score = r2_score(y_test_subset, model.predict(shuffled_data))
+        importance = original_score - shuffled_score
+        accumulated_importances[prefix] += importance
+
+# Calculate the mean importance for each feature group
+mean_feature_importance = {prefix: total_importance / num_repetitions
+                           for prefix, total_importance in accumulated_importances.items()}
+
+# Printing the mean feature importance
+print("Mean Feature Importance:")
+for feature, importance in mean_feature_importance.items():
+    print(f"{feature}: {importance}")
+
+# Assuming mean_feature_importance is your dictionary with feature importances
+# Sort the dictionary by importance in descending order
+sorted_feature_importance = dict(sorted(mean_feature_importance.items(), key=lambda item: item[1], reverse=True))
+
+# Plotting the mean feature importance
+plt.figure(figsize=(12, 6))
+plt.bar(range(len(sorted_feature_importance)), list(sorted_feature_importance.values()), align='center')
+plt.xticks(range(len(sorted_feature_importance)), list(sorted_feature_importance.keys()), rotation=45, ha='right')
+plt.xlabel('Features')
+plt.ylabel('Mean Importance')
+plt.title('Mean Feature Importance')
+plt.tight_layout()  # Adjust layout to fit labels
+plt.savefig('feature_importance_1.png')
 plt.show()
