@@ -25,3 +25,7 @@ variable "admins" {
 variable "artifact_writers" {
     type = list(object({email: string}))
 }
+
+variable "artifact_readers" {
+    type = list(object({email: string}))
+}
