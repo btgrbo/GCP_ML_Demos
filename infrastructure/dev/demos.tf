@@ -1,3 +1,5 @@
+# demo 1
+
 module "demo1" {
   source = "../modules/ml-environment"
 
@@ -6,6 +8,7 @@ module "demo1" {
   location         = local.location
   project          = data.google_project.default
   admins           = local.admins
+  artifact_readers = [module.demo1_infra.dataflow_batch_sa, module.demo1_infra.dataflow_inference_sa]
   artifact_writers = [module.cloudbuild.cloudbuild_sa]
 
   depends_on = [
@@ -32,6 +35,9 @@ module "demo1_infra" {
   ]
 }
 
+########################################################################
+# demo 2
+
 module "demo2" {
   source = "../modules/ml-environment"
 
@@ -40,6 +46,7 @@ module "demo2" {
   location         = local.location
   project          = data.google_project.default
   admins           = local.admins
+  artifact_readers = []
   artifact_writers = [module.cloudbuild.cloudbuild_sa]
 
   depends_on = [

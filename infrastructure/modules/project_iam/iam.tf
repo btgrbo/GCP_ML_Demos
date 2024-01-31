@@ -16,6 +16,10 @@ data "google_iam_policy" "project_iam" {
     role    = "roles/owner"
     members = var.project_admins
   }
+#  binding {
+#    role    = "roles/viewer"
+#    members = [for sa in var.dataflow_accounts : "serviceAccount:${sa.email}"]
+#  }
   binding {
     role    = "roles/bigquery.dataOwner"
     members = var.project_admins
@@ -62,8 +66,16 @@ data "google_iam_policy" "project_iam" {
     members = ["serviceAccount:${var.cloudbuild_sa.email}"]
   }
   binding {
-    role = "roles/cloudbuild.serviceAgent"
+    role    = "roles/cloudbuild.serviceAgent"
     members = ["serviceAccount:service-${var.project.number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"]
+  }
+  binding {
+    role    = "roles/dataflow.serviceAgent"
+    members = ["serviceAccount:service-${var.project.number}@dataflow-service-producer-prod.iam.gserviceaccount.com"]
+  }
+  binding {
+    role    = "roles/dataflow.worker"
+    members = [for sa in var.dataflow_accounts : "serviceAccount:${sa.email}"]
   }
 }
 

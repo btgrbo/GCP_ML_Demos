@@ -66,6 +66,7 @@ data "google_iam_policy" "storage" {
       [
         "serviceAccount:${google_service_account.dataflow_batch.email}",
         "serviceAccount:${google_service_account.dataflow_inference.email}",
+        "serviceAccount:service-${var.project.number}@dataflow-service-producer-prod.iam.gserviceaccount.com",
       ],
       var.admins,
     )
