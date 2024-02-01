@@ -14,23 +14,29 @@ from apache_beam.transforms import window
 from src import utils
 
 
-def main(argv=None):
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--pubsub_source_subscription', required=True)
     parser.add_argument('--pubsub_sink_topic', required=True)
     parser.add_argument('--transform_artifact_location', required=True)
-    parser.add_argument('--project', default="bt-int-ml-specialization")
+    parser.add_argument('--project_id', default="bt-int-ml-specialization")
 
-    known_args, pipeline_args = parser.parse_known_args(argv)
+    known_args, pipeline_args = parser.parse_known_args()
 
-    pipeline_options = PipelineOptions(pipeline_args, streaming=True)
+    pipeline_options = PipelineOptions(
+        pipeline_args,
+        project=known_args.project_id,  # needs to be set explicitly...
+        streaming=True,                 # needed for Pub/Sub
+    )
 
-    local_artifact_path = f"/tmp/artifacs"  # works on linux only...
+    local_artifact_path = f"/tmp/artifacts"  # works on linux only...
 
+    # TODO: remove after https://github.com/apache/beam/issues/30062 has been solved
+    #       with new version rollout.
     utils.download_transform_artifacts(
         gcs_path=known_args.transform_artifact_location,
         local_path=local_artifact_path,
-        project_id=known_args.project,
+        project_id=known_args.project_id,
     )
 
     transform_fn = utils.get_inference_transform_fn(local_artifact_path)

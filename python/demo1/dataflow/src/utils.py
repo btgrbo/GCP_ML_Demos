@@ -66,7 +66,10 @@ def _replace_artifact_location(attributes_json: Path):
 
 
 def download_transform_artifacts(gcs_path: str, local_path: str, project_id: str):
-    """using artifacts directly from GCS seems to be broken in READ mode"""
+    """
+    using artifacts directly from GCS is currently broken in READ mode.
+    See: https://github.com/apache/beam/issues/30062
+    """
 
     local_path = Path(local_path)
     shutil.rmtree(local_path, ignore_errors=True)
@@ -83,7 +86,7 @@ def download_transform_artifacts(gcs_path: str, local_path: str, project_id: str
     blobs = bucket.list_blobs(prefix=path)
 
     for blob in blobs:
-        local_file_path = local_path / blob.name.replace(path, "")
+        local_file_path = local_path / blob.name.replace(path, "").replace("/", "", 1)
         if blob.name.endswith('/') and blob.size == 0:  # directory
             local_file_path.mkdir()
         else:
