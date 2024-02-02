@@ -66,9 +66,7 @@ def build_model():
 
     # Build a neural network model using TensorFlow and Keras
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.layers.Dense(128, activation='relu', input_shape=(5,)))
-    model.add(tf.keras.layers.Dense(64, activation='relu'))
-    model.add(tf.keras.layers.Dense(32, activation='relu'))
+    model.add(tf.keras.layers.Dense(32, activation='relu', input_shape=(18,)))
     model.add(tf.keras.layers.Dense(1, activation='linear'))
 
     return model
