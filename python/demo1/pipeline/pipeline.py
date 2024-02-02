@@ -96,7 +96,7 @@ def pipeline(display_name: str = "demo1",
     ]
     args = [
         "--train_file_path",
-        "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-01-23T09:04:12.454152-00000-of-00001.tfrecord"
+        "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-01-31T16:17:33.578849-00000-of-00001.tfrecord"
     ]
 
     # The spec of the worker pools including machine type and Docker image
@@ -183,39 +183,6 @@ def pipeline(display_name: str = "demo1",
         service_account=f"ml-demo1-predictor@{PROJECT}.iam.gserviceaccount.com",
     )
 
-    ########### transformer model
-
-    unmanaged_model_importer_transform = dsl.importer(
-        artifact_uri='gs://bt-int-ml-specialization-ml-demo1/transform_model/transform',
-        artifact_class=artifact_types.UnmanagedContainerModel,
-        metadata={
-            'containerSpec': {
-                'imageUri': DEPLOY_IMAGE
-            }
-        }
-    )
-
-    model_upload_op_transform = ModelUploadOp(
-        display_name=display_name,
-        unmanaged_container_model=unmanaged_model_importer_transform.outputs['artifact'],
-        project=PROJECT,
-        location=REGION,
-    )
-
-    # todo: {model_version} add model version to display name
-    endpoint_transform = EndpointCreateOp(
-        display_name=f"demo1_endpoint_transform",
-        location=REGION,
-    )
-
-    model_deploy_op_transform = ModelDeployOp(
-        model=model_upload_op_transform.outputs["model"],
-        endpoint=endpoint_transform.outputs["endpoint"],
-        dedicated_resources_machine_type="n1-standard-2",
-        dedicated_resources_min_replica_count=1,
-        dedicated_resources_max_replica_count=1,
-        service_account=f"ml-demo1-predictor@{PROJECT}.iam.gserviceaccount.com",
-    )
 
     # todo: use parent model to create different versions of model
     # todo: prio3: white paper

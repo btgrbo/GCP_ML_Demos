@@ -18,22 +18,37 @@ def preprocess(features):
 
     # Define parsing schema
     keys_to_features = {
+        'fare': tf.io.FixedLenFeature([], tf.float32),
+        'trip_miles': tf.io.FixedLenFeature([], tf.float32),
         'trip_seconds': tf.io.FixedLenFeature([], tf.float32),
-        'payment_type': tf.io.VarLenFeature(tf.float32),
+        'dropoff_longitude': tf.io.FixedLenFeature([], tf.float32),
+        'dropoff_latitude': tf.io.FixedLenFeature([], tf.float32),
+        'pickup_latitude': tf.io.FixedLenFeature([], tf.float32),
+        'pickup_longitude': tf.io.FixedLenFeature([], tf.float32),
+        'start_month': tf.io.VarLenFeature(tf.float32),
+        'start_date': tf.io.VarLenFeature(tf.float32),
+        'day_of_week': tf.io.VarLenFeature(tf.float32)
     }
 
     # Load one example
     parsed_features = tf.io.parse_single_example(features, keys_to_features)
 
     # process label
-    label = parsed_features['trip_seconds'] #todo replace by correct label
+    label = parsed_features['fare']
     label = tf.reshape(label, [1])
+    del parsed_features['fare']
 
     # Convert from a SparseTensor to a dense tensor
-    parsed_features['payment_type'] = tf.sparse.to_dense(parsed_features['payment_type'])
+    ohe_vars = ['start_month', 'start_date', 'day_of_week']
+    for ohe_var in ohe_vars:
+        parsed_features[ohe_var] = tf.sparse.to_dense(parsed_features[ohe_var])
 
-    # reshape and concat tensors
-    parsed_features['trip_seconds'] = tf.reshape(parsed_features['trip_seconds'], [1])
+    flt_vars = ['trip_miles', 'trip_seconds', 'dropoff_longitude', 'dropoff_latitude', 'pickup_longitude',
+                'pickup_latitude']
+    for flt_var in flt_vars:
+        # reshape and concat tensors
+        parsed_features[flt_var] = tf.reshape(parsed_features[flt_var], [1])
+
     tensors = list(parsed_features.values())
     tensors = tf.concat(tensors, axis=-1)
     tensors = tf.reshape(tensors, [-1,])
@@ -66,7 +81,7 @@ def build_model():
 
     # Build a neural network model using TensorFlow and Keras
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.layers.Dense(32, activation='relu', input_shape=(18,)))
+    model.add(tf.keras.layers.Dense(32, activation='relu', input_shape=(56,)))
     model.add(tf.keras.layers.Dense(1, activation='linear'))
 
     return model
