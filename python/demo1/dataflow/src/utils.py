@@ -59,11 +59,13 @@ def add_date_info_fn(element: dict[str, Any]) -> dict[str, Any]:
         day_of_week = timestamp.weekday()
         month = timestamp.month
         date = timestamp.day
+        hour = timestamp.hour
 
         # Add the extracted information to the element
         element['day_of_week'] = str(day_of_week)
         element['start_month'] = str(month)
         element['start_date'] = str(date)
+        element['start_hour'] = str(hour)
 
         # Remove the original 'trip_start_timestamp' field
         del element['trip_start_timestamp']

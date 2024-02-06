@@ -96,7 +96,7 @@ def pipeline(display_name: str = "demo1",
     ]
     args = [
         "--train_file_path",
-        "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-01-31T16:17:33.578849-00000-of-00001.tfrecord"
+        "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-02-06T16:50:48.097865-00000-of-00001.tfrecord"
     ]
 
     # The spec of the worker pools including machine type and Docker image

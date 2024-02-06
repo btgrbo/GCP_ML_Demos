@@ -26,7 +26,8 @@ TRANSFORM_STEPS = [
     tft.ScaleToZScore(columns=['dropoff_longitude']),
     OneHot(columns=['day_of_week']),
     OneHot(columns=['start_month']),
-    OneHot(columns=['start_date'])
+    OneHot(columns=['start_date']),
+    OneHot(columns=['start_hour'])
 ]
 
 
