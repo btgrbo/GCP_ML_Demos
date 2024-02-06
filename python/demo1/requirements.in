@@ -4,6 +4,11 @@ fire
 cloudml-hypertune
 apache-beam
 tensorflow-transform
+scikit-learn
+matplotlib
+pandas
+pyarrow
+db-dtypes
 
 # pipeline
 kfp
