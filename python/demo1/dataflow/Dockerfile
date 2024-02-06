@@ -1,17 +1,18 @@
+# europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/dataflow_inference:latest
+
 FROM gcr.io/dataflow-templates-base/python310-template-launcher-base:latest
 
 WORKDIR /dataflow/template
 
-# Do not include `apache-beam` in requirements.txt
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -U -r ./requirements.txt && \
-    pip install --no-cache-dir apache-beam[gcp]
+RUN pip install --no-cache-dir -U -r ./requirements.txt
 
 COPY setup.py .
 COPY src ./src
 COPY main_inference.py ./main.py
 
-ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE="/dataflow/template/requirements.txt"
+# use sdk_location="container", instead of FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE
+# ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE="/dataflow/template/requirements.txt"
 ENV FLEX_TEMPLATE_PYTHON_PY_FILE="/dataflow/template/main.py"
 ENV FLEX_TEMPLATE_PYTHON_SETUP_FILE="/dataflow/template/setup.py"

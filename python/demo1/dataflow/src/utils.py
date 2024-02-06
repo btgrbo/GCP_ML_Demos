@@ -1,15 +1,10 @@
-import json
-import re
-import shutil
-from pathlib import Path
+from typing import Any
 
 import numpy as np
 import tensorflow as tf
 from apache_beam import Row
 from apache_beam.ml import MLTransform
 from apache_beam.ml.transforms.tft import TFTOperation
-from google.cloud import storage
-from typing import Dict, Any
 
 
 def row_to_tf_example(event):
@@ -56,46 +51,7 @@ def get_inference_transform_fn(
     return MLTransform(read_artifact_location=artifact_location_dir)
 
 
-def _replace_artifact_location(attributes_json: Path):
-    """this is needed because stupidity"""
-    pth = attributes_json.parent
-    content = json.loads(attributes_json.read_text())
-    artifact_location = content[0]["artifact_location"]
-    content[0]["artifact_location"] = str(pth / artifact_location.split("/")[-1])
-    attributes_json.write_text(json.dumps(content))
-
-
-def download_transform_artifacts(gcs_path: str, local_path: str, project_id: str):
-    """
-    using artifacts directly from GCS is currently broken in READ mode.
-    See: https://github.com/apache/beam/issues/30062
-    """
-
-    local_path = Path(local_path)
-    shutil.rmtree(local_path, ignore_errors=True)
-    local_path.mkdir(parents=True)
-
-    client = storage.Client(project=project_id)
-
-    match = re.match(r'gs://([^/]+)/(.+)', gcs_path)
-    if match is None:
-        raise ValueError(f"Invalid GCS path: {gcs_path}")
-
-    bucket_name, path = match.groups()
-    bucket = client.get_bucket(bucket_name)
-    blobs = bucket.list_blobs(prefix=path)
-
-    for blob in blobs:
-        local_file_path = local_path / blob.name.replace(path, "").replace("/", "", 1)
-        if blob.name.endswith('/') and blob.size == 0:  # directory
-            local_file_path.mkdir()
-        else:
-            blob.download_to_filename(local_file_path)  # file
-
-    _replace_artifact_location(local_path / "attributes.json")
-
-
-def add_date_info_fn(element: Dict[str, Any]) -> Dict[str, Any]:
+def add_date_info_fn(element: dict[str, Any]) -> dict[str, Any]:
     # Check if 'trip_start_timestamp' is in the element
     if 'trip_start_timestamp' in element:
         # Extract the day of the week, month, and date

@@ -1,3 +1,4 @@
 tensorflow-transform
 google-cloud-storage
 numpy
+apache-beam[gcp]==2.54.0rc1

@@ -21,7 +21,7 @@ resource "google_pubsub_topic" "event_sink" {
 }
 
 resource "google_pubsub_subscription" "event_sink" {
-  name  = "demo1-event-sink"
+  name  = "demo1-event-sink-subscription"
   topic = google_pubsub_topic.event_sink.name
 
   ack_deadline_seconds       = 20

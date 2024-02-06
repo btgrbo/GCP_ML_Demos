@@ -11,8 +11,9 @@ absl-py==1.4.0
     #   tensorflow-metadata
     #   tensorflow-transform
     #   tfx-bsl
-apache-beam[gcp]==2.53.0
+apache-beam[gcp]==2.54.0rc1
     # via
+    #   -r requirements.in
     #   tensorflow-transform
     #   tfx-bsl
 astunparse==1.6.3
