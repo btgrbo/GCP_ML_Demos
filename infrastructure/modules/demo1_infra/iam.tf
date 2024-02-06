@@ -1,39 +1,31 @@
 #############################################################
 # pubsub event_source
 
-data "google_iam_policy" "event_source" {
-  binding {
-    role    = "roles/pubsub.publisher"
-    members = [for sa in var.publishers : "serviceAccount:${sa.email}"]
-  }
-  binding {
-    role    = "roles/pubsub.subscriber"
-    members = ["serviceAccount:${google_service_account.dataflow_inference.email}"]
-  }
+resource "google_pubsub_topic_iam_binding" "event_source_topic" {
+  members = [for sa in var.publishers : "serviceAccount:${sa.email}"]
+  role    = "roles/pubsub.publisher"
+  topic   = google_pubsub_topic.event_source.name
 }
 
-resource "google_pubsub_topic_iam_policy" "event_source" {
-  topic       = google_pubsub_topic.event_source.name
-  policy_data = data.google_iam_policy.event_source.policy_data
+resource "google_pubsub_subscription_iam_binding" "event_source_subscription" {
+  members      = ["serviceAccount:${google_service_account.dataflow_inference.email}"]
+  role         = "roles/pubsub.subscriber"
+  subscription = google_pubsub_subscription.event_source.name
 }
 
 #############################################################
 # pubsub event_sink
 
-data "google_iam_policy" "event_sink" {
-  binding {
-    role    = "roles/pubsub.publisher"
-    members = ["serviceAccount:${google_service_account.dataflow_inference.email}"]
-  }
-  binding {
-    role    = "roles/pubsub.subscriber"
-    members = [for sa in var.subscribers : "serviceAccount:${sa.email}"]
-  }
+resource "google_pubsub_topic_iam_binding" "event_sink_topic" {
+  members = ["serviceAccount:${google_service_account.dataflow_inference.email}"]
+  role    = "roles/pubsub.publisher"
+  topic   = google_pubsub_topic.event_sink.name
 }
 
-resource "google_pubsub_topic_iam_policy" "event_sink" {
-  topic       = google_pubsub_topic.event_sink.name
-  policy_data = data.google_iam_policy.event_sink.policy_data
+resource "google_pubsub_subscription_iam_binding" "event_sink_subscription" {
+  members      = [for sa in var.subscribers : "serviceAccount:${sa.email}"]
+  role         = "roles/pubsub.subscriber"
+  subscription = google_pubsub_subscription.event_sink.name
 }
 
 #############################################################
