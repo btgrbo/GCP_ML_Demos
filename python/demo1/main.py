@@ -25,6 +25,7 @@ def preprocess(features):
         'dropoff_latitude': tf.io.FixedLenFeature([], tf.float32),
         'pickup_latitude': tf.io.FixedLenFeature([], tf.float32),
         'pickup_longitude': tf.io.FixedLenFeature([], tf.float32),
+        'start_hour': tf.io.VarLenFeature(tf.float32),
         'start_month': tf.io.VarLenFeature(tf.float32),
         'start_date': tf.io.VarLenFeature(tf.float32),
         'day_of_week': tf.io.VarLenFeature(tf.float32)
@@ -81,7 +82,7 @@ def build_model():
 
     # Build a neural network model using TensorFlow and Keras
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.layers.Dense(32, activation='relu', input_shape=(56,)))
+    model.add(tf.keras.layers.Dense(16, activation='relu', input_shape=(80,)))
     model.add(tf.keras.layers.Dense(1, activation='linear'))
 
     return model
