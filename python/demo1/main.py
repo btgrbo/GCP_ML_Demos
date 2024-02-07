@@ -40,7 +40,7 @@ def preprocess(features):
     del parsed_features['fare']
 
     # Convert from a SparseTensor to a dense tensor
-    ohe_vars = ['start_month', 'start_date', 'day_of_week']
+    ohe_vars = ['start_month', 'start_date', 'day_of_week', 'start_hour']
     for ohe_var in ohe_vars:
         parsed_features[ohe_var] = tf.sparse.to_dense(parsed_features[ohe_var])
 
