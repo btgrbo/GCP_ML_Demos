@@ -1,10 +1,15 @@
 from typing import Any
 
+import pytz
 import numpy as np
 import tensorflow as tf
+import requests
+import json
 from apache_beam import Row
 from apache_beam.ml import MLTransform
 from apache_beam.ml.transforms.tft import TFTOperation
+from datetime import datetime
+
 
 
 def row_to_tf_example(event):
@@ -54,6 +59,16 @@ def get_inference_transform_fn(
 def add_date_info_fn(element: dict[str, Any]) -> dict[str, Any]:
     # Check if 'trip_start_timestamp' is in the element
     if 'trip_start_timestamp' in element:
+        # for json messages timestamps come as string opposed to timestamps from bq
+        if isinstance(element['trip_start_timestamp'], str):
+            timestamp_format = '%Y-%m-%d %H:%M:%S.%f'
+            # Extract the datetime string without the ' UTC' at the end
+            datetime_str = element['trip_start_timestamp'].rsplit(' ', 1)[0]
+            # Parse the timestamp string to a datetime object
+            parsed_timestamp = datetime.strptime(datetime_str, timestamp_format)
+            # Since the timestamp is in UTC, attach the UTC timezone to make it timezone-aware
+            element['trip_start_timestamp'] = parsed_timestamp.replace(tzinfo=pytz.utc)
+
         # Extract the day of the week, month, and date
         timestamp = element['trip_start_timestamp']
         day_of_week = timestamp.weekday()
@@ -69,5 +84,30 @@ def add_date_info_fn(element: dict[str, Any]) -> dict[str, Any]:
 
         # Remove the original 'trip_start_timestamp' field
         del element['trip_start_timestamp']
+
+    return element
+
+
+def get_prediction(element):
+
+    model_endpoint_url = ('https://europe-west3-aiplatform.googleapis.com/v1/projects/738673379845/locations/'
+                          'europe-west3/endpoints/5704855663134375936:predict')
+
+    # Send a POST request to model endpoint
+    response = requests.post(model_endpoint_url, data=element)
+
+    # Process the response
+    response_json = response.json()
+    prediction = response_json.get('prediction')
+    breakpoint()
+    # Deserialize a serialized tf.train.Example.
+    example = tf.train.Example()
+    example.ParseFromString(element)
+
+    # Add a float feature to a tf.train.Example.
+    feature = tf.train.Feature(float_list=tf.train.FloatList(value=[prediction]))
+    example.features.feature['prediction'].CopyFrom(feature)
+
+    element = example.SerializeToString()
 
     return element

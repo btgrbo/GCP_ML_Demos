@@ -63,3 +63,20 @@ for parsed_record in parsed_dataset:
             # Convert tensor to numpy array for printing
             print_value = value._numpy()
         print(f"{key}: {print_value}")
+
+from datetime import datetime
+import pytz
+
+tt = "2015-12-06 17:15:00.000000 UTC"
+timestamp_format = '%Y-%m-%d %H:%M:%S.%f'
+# Extract the datetime string without the ' UTC' at the end
+datetime_str = tt.rsplit(' ', 1)[0]
+# Parse the timestamp string to a datetime object
+parsed_timestamp = datetime.strptime(datetime_str, timestamp_format)
+# Since the timestamp is in UTC, attach the UTC timezone to make it timezone-aware
+timestamp=parsed_timestamp.replace(tzinfo=pytz.utc)
+
+day_of_week = timestamp.weekday()
+month = timestamp.month
+date = timestamp.day
+hour = timestamp.hour
