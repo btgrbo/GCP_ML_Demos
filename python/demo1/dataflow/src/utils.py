@@ -1,15 +1,14 @@
-from typing import Any
+from typing import Any, Union
 
 import pytz
 import numpy as np
 import tensorflow as tf
-import requests
 import json
 from apache_beam import Row
 from apache_beam.ml import MLTransform
 from apache_beam.ml.transforms.tft import TFTOperation
 from datetime import datetime
-
+from google.cloud import aiplatform
 
 
 def row_to_tf_example(event):
@@ -45,7 +44,6 @@ def get_batch_transform_fn(
         transform_steps: list[TFTOperation],
         artifact_location_dir: str
 ) -> MLTransform:
-
     transform_function = MLTransform(write_artifact_location=artifact_location_dir)
     for step in transform_steps:
         transform_function = transform_function.with_transform(step)
@@ -91,26 +89,45 @@ def add_date_info_fn(element: dict[str, Any]) -> dict[str, Any]:
     return element
 
 
-def get_prediction(element):
+def get_prediction(
+        instances: Union[dict, list[dict]]) -> list:
+    """
+    `instances` can be either single instance of type dict or a list
+    of instances.
+    """
 
-    model_endpoint_url = ('https://europe-west3-aiplatform.googleapis.com/v1/projects/738673379845/locations/'
-                          'europe-west3/endpoints/5704855663134375936:predict')
+    project: str = '738673379845'
+    endpoint_id: str = '7097593847898701824'
+    location: str = "europe-west3"
 
-    # Send a POST request to model endpoint
-    response = requests.post(model_endpoint_url, data=element)
+    # Specify the order of features
+    feature_order = ['start_month', 'start_date', 'day_of_week', 'start_hour', 'trip_miles', 'trip_seconds',
+                     'dropoff_longitude', 'dropoff_latitude', 'pickup_longitude', 'pickup_latitude']
 
-    # Process the response
-    response_json = response.json()
-    prediction = response_json.get('prediction')
-    breakpoint()
-    # Deserialize a serialized tf.train.Example.
-    example = tf.train.Example()
-    example.ParseFromString(element)
+    # Create the concatenated array based on the specified order
+    concatenated_array = np.concatenate([instances[feature].flatten() for feature in feature_order])
 
-    # Add a float feature to a tf.train.Example.
-    feature = tf.train.Feature(float_list=tf.train.FloatList(value=[prediction]))
-    example.features.feature['prediction'].CopyFrom(feature)
+    # Ensure the concatenated array is 2D with shape (1, N)
+    final_array = concatenated_array.reshape(1, -1)
 
-    element = example.SerializeToString()
+    # Convert the NumPy array to a list
+    dense_input_list = final_array.tolist()[0]
 
-    return element
+    input_dict_list = [{"dense_input": dense_input_list}]
+
+    endpoint = aiplatform.Endpoint(endpoint_name=endpoint_id, project=project, location=location)
+    response = endpoint.predict(instances=input_dict_list)
+
+    # The predictions are a google.protobuf.Value representation of the model's predictions.
+    instances['prediction'] = response.predictions
+
+    # convert arrays to list
+    combined_data_converted = {k: v.tolist() if isinstance(v, np.ndarray) else v for k, v in instances.items()}
+
+    # Convert the combined structure to a JSON string
+    combined_json = json.dumps(combined_data_converted)
+
+    # Encode this JSON string to bytes
+    combined_bytes = combined_json.encode('utf-8')
+
+    return combined_bytes
