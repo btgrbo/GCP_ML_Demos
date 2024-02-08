@@ -31,6 +31,9 @@ def row_to_tf_example(event):
         elif isinstance(value, str):
             features[key] = tf.train.Feature(
                 bytes_list=tf.train.BytesList(value=[value.encode()]))
+        elif isinstance(value, float):
+            features[key] = tf.train.Feature(
+                float_list=tf.train.FloatList(value=[value]))
         else:
             raise ValueError(f"Unsupported data type: {type(value)} for {key=}")
 
