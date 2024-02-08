@@ -19,7 +19,6 @@ from src.one_hot_fn import OneHot
 TRANSFORM_STEPS = [
     tft.ScaleToZScore(columns=['trip_seconds']),
     tft.ScaleToZScore(columns=['trip_miles']),
-    tft.ScaleToZScore(columns=['fare']),
     tft.ScaleToZScore(columns=['pickup_latitude']),
     tft.ScaleToZScore(columns=['pickup_longitude']),
     tft.ScaleToZScore(columns=['dropoff_latitude']),

@@ -48,8 +48,9 @@ def main():
                 | "ReadFromPubSub" >> read_pubsub
                 | "DecodeJSON" >> beam.Map(lambda x: json.loads(x.decode()))
                 | "WindowInto" >> beam.WindowInto(window.FixedWindows(1))  # TODO: why?
+                | "AddDateInfo" >> beam.Map(utils.add_date_info_fn)
                 | "Transform" >> transform_fn
-                | "ConvertToTFExample" >> beam.Map(utils.row_to_tf_example)
+                | "SendToModelEndpoint" >> beam.Map(lambda x: utils.get_prediction(x.as_dict()))
                 | "WriteToPubSub" >> write_pubsub
         )
 

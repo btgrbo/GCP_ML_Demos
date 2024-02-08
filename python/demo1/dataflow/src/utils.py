@@ -1,10 +1,14 @@
-from typing import Any
+from typing import Any, Union
 
+import pytz
 import numpy as np
 import tensorflow as tf
+import json
 from apache_beam import Row
 from apache_beam.ml import MLTransform
 from apache_beam.ml.transforms.tft import TFTOperation
+from datetime import datetime
+from google.cloud import aiplatform
 
 
 def row_to_tf_example(event):
@@ -26,6 +30,9 @@ def row_to_tf_example(event):
         elif isinstance(value, str):
             features[key] = tf.train.Feature(
                 bytes_list=tf.train.BytesList(value=[value.encode()]))
+        elif isinstance(value, float):
+            features[key] = tf.train.Feature(
+                float_list=tf.train.FloatList(value=[value]))
         else:
             raise ValueError(f"Unsupported data type: {type(value)} for {key=}")
 
@@ -37,7 +44,6 @@ def get_batch_transform_fn(
         transform_steps: list[TFTOperation],
         artifact_location_dir: str
 ) -> MLTransform:
-
     transform_function = MLTransform(write_artifact_location=artifact_location_dir)
     for step in transform_steps:
         transform_function = transform_function.with_transform(step)
@@ -54,6 +60,16 @@ def get_inference_transform_fn(
 def add_date_info_fn(element: dict[str, Any]) -> dict[str, Any]:
     # Check if 'trip_start_timestamp' is in the element
     if 'trip_start_timestamp' in element:
+        # for json messages timestamps come as string opposed to timestamps from bq
+        if isinstance(element['trip_start_timestamp'], str):
+            timestamp_format = '%Y-%m-%d %H:%M:%S.%f'
+            # Extract the datetime string without the ' UTC' at the end
+            datetime_str = element['trip_start_timestamp'].rsplit(' ', 1)[0]
+            # Parse the timestamp string to a datetime object
+            parsed_timestamp = datetime.strptime(datetime_str, timestamp_format)
+            # Since the timestamp is in UTC, attach the UTC timezone to make it timezone-aware
+            element['trip_start_timestamp'] = parsed_timestamp.replace(tzinfo=pytz.utc)
+
         # Extract the day of the week, month, and date
         timestamp = element['trip_start_timestamp']
         day_of_week = timestamp.weekday()
@@ -71,3 +87,47 @@ def add_date_info_fn(element: dict[str, Any]) -> dict[str, Any]:
         del element['trip_start_timestamp']
 
     return element
+
+
+def get_prediction(
+        instances: Union[dict, list[dict]]) -> list:
+    """
+    `instances` can be either single instance of type dict or a list
+    of instances.
+    """
+
+    project: str = '738673379845'
+    endpoint_id: str = '7097593847898701824'
+    location: str = "europe-west3"
+
+    # Specify the order of features
+    feature_order = ['start_month', 'start_date', 'day_of_week', 'start_hour', 'trip_miles', 'trip_seconds',
+                     'dropoff_longitude', 'dropoff_latitude', 'pickup_longitude', 'pickup_latitude']
+
+    # Create the concatenated array based on the specified order
+    concatenated_array = np.concatenate([instances[feature].flatten() for feature in feature_order])
+
+    # Ensure the concatenated array is 2D with shape (1, N)
+    final_array = concatenated_array.reshape(1, -1)
+
+    # Convert the NumPy array to a list
+    dense_input_list = final_array.tolist()[0]
+
+    input_dict_list = [{"dense_input": dense_input_list}]
+
+    endpoint = aiplatform.Endpoint(endpoint_name=endpoint_id, project=project, location=location)
+    response = endpoint.predict(instances=input_dict_list)
+
+    # The predictions are a google.protobuf.Value representation of the model's predictions.
+    instances['prediction'] = response.predictions
+
+    # convert arrays to list
+    combined_data_converted = {k: v.tolist() if isinstance(v, np.ndarray) else v for k, v in instances.items()}
+
+    # Convert the combined structure to a JSON string
+    combined_json = json.dumps(combined_data_converted)
+
+    # Encode this JSON string to bytes
+    combined_bytes = combined_json.encode('utf-8')
+
+    return combined_bytes

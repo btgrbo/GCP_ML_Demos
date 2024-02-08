@@ -1,4 +1,5 @@
 import tensorflow as tf
+import json
 
 # Path to your TFRecord file
 #tfrecord_file_path = 'gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-01-31T16:17:33.578849-00000-of-00001.tfrecord'\
@@ -11,17 +12,17 @@ raw_dataset = tf.data.TFRecordDataset([tfrecord_file_path])
 # Define the feature description dictionary
 # This is needed to parse the tf.train.Example messages
 feature_description = {
-    #'fare': tf.io.FixedLenFeature([], tf.float32),
-    #'trip_miles': tf.io.FixedLenFeature([], tf.float32),
-    #'trip_seconds': tf.io.FixedLenFeature([], tf.float32),
-    #'dropoff_longitude': tf.io.FixedLenFeature([], tf.float32),
-    #'dropoff_latitude': tf.io.FixedLenFeature([], tf.float32),
-    #'pickup_latitude': tf.io.FixedLenFeature([], tf.float32),
-    #'pickup_longitude': tf.io.FixedLenFeature([], tf.float32),
+    'fare': tf.io.FixedLenFeature([], tf.float32),
+    'trip_miles': tf.io.FixedLenFeature([], tf.float32),
+    'trip_seconds': tf.io.FixedLenFeature([], tf.float32),
+    'dropoff_longitude': tf.io.FixedLenFeature([], tf.float32),
+    'dropoff_latitude': tf.io.FixedLenFeature([], tf.float32),
+    'pickup_latitude': tf.io.FixedLenFeature([], tf.float32),
+    'pickup_longitude': tf.io.FixedLenFeature([], tf.float32),
     'start_hour': tf.io.VarLenFeature(tf.float32),
-    #'start_month': tf.io.VarLenFeature(tf.float32),
-    #'start_date': tf.io.VarLenFeature(tf.float32),
-    #'day_of_week': tf.io.VarLenFeature(tf.float32)
+    'start_month': tf.io.VarLenFeature(tf.float32),
+    'start_date': tf.io.VarLenFeature(tf.float32),
+    'day_of_week': tf.io.VarLenFeature(tf.float32)
 }
 
 # Function to parse a single example
@@ -63,3 +64,70 @@ for parsed_record in parsed_dataset:
             # Convert tensor to numpy array for printing
             print_value = value._numpy()
         print(f"{key}: {print_value}")
+
+from datetime import datetime
+import pytz
+
+tt = "2015-12-06 17:15:00.000000 UTC"
+timestamp_format = '%Y-%m-%d %H:%M:%S.%f'
+# Extract the datetime string without the ' UTC' at the end
+datetime_str = tt.rsplit(' ', 1)[0]
+# Parse the timestamp string to a datetime object
+parsed_timestamp = datetime.strptime(datetime_str, timestamp_format)
+# Since the timestamp is in UTC, attach the UTC timezone to make it timezone-aware
+timestamp=parsed_timestamp.replace(tzinfo=pytz.utc)
+
+day_of_week = timestamp.weekday()
+month = timestamp.month
+date = timestamp.day
+hour = timestamp.hour
+
+
+
+import tensorflow as tf
+
+model = tf.saved_model.load('gs://bt-int-ml-specialization-ml-demo1/1/model')
+print(list(model.signatures.keys()))  # List signature keys
+
+model = tf.saved_model.load('./python/demo1/dataflow/model')
+print(list(model.signatures.keys()))
+signature = model.signatures['serving_default']
+print(signature.structured_input_signature)
+print(signature.structured_outputs)
+
+
+import numpy as np
+
+# Assuming 'data_dict' is your input dictionary
+data_dict = {
+    'day_of_week': np.array([0., 0., 0., 0., 0., 0., 1.], dtype=np.float32),
+    'dropoff_latitude': np.array([0.48586452], dtype=np.float32),
+    'dropoff_longitude': np.array([1.205355], dtype=np.float32),
+    'pickup_latitude': np.array([5.449345], dtype=np.float32),
+    'pickup_longitude': np.array([-1.8299297], dtype=np.float32),
+    'start_date': np.array([0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                            0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], dtype=np.float32),
+    'start_hour': np.array([0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.,
+                            0., 0., 0., 0., 0., 0., 0.], dtype=np.float32),
+    'start_month': np.array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0.], dtype=np.float32),
+    'trip_miles': np.array([-1.256183], dtype=np.float32),
+    'trip_seconds': np.array([-1.3809716], dtype=np.float32)
+}
+
+# Specify the order of features
+feature_order = ['start_month', 'start_date', 'day_of_week', 'start_hour', 'trip_miles', 'trip_seconds', 'dropoff_longitude', 'dropoff_latitude', 'pickup_longitude', 'pickup_latitude']
+
+# Create the concatenated array based on the specified order
+concatenated_array = np.concatenate([data_dict[feature].flatten() for feature in feature_order])
+
+# Ensure the concatenated array is 2D with shape (1, N)
+final_array = concatenated_array.reshape(1, -1)
+
+# Convert the NumPy array to a list
+dense_input_list = final_array.tolist()[0]
+
+# Prepare the JSON payload
+json_payload = {"instances": [{"dense_input": dense_input_list}]}
+
+# Convert the payload to a JSON string for serving
+json_str = json.dumps(json_payload)
