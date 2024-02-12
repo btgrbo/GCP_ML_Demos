@@ -13,8 +13,7 @@ from pathlib import Path
 from google.cloud import aiplatform
 from kfp import dsl, compiler
 
-from components import load_and_save_data
-from components import training
+import components
 
 PROJECT = "bt-int-ml-specialization"
 REGION = "europe-west3"
@@ -26,22 +25,28 @@ CURRENT_DIR = Path(__file__).parent
     name='Vertex AI demo',
     description='Vertex AI demo'
 )
-def pipeline():
+def pipeline(data_dir: str, test_split_ratio: float):
     """Pipeline to train a custom model on the Black Friday dataset."""
 
-    # Load the dataset and split into train, validate, and test
-    load_data_op = load_and_save_data(
-        train_query='SELECT * FROM `bt-int-ml-specialization.demo2.vw-black-friday-train`',
-        test_query='SELECT * FROM `bt-int-ml-specialization.demo2.vw-black-friday-test`',
+    data = dsl.importer(
+        artifact_uri=data_dir,
+        artifact_class=dsl.Dataset,
     )
 
-    training_op = training(
-        train_file_parquet=load_data_op.outputs['train_data'],
-        eval_file_parquet=load_data_op.outputs['test_data'],
-#        model_file=f"{PIPELINE_ROOT}/mlmodels/model1.pkl",
-#        eval_output_file_parquet=f"{PIPELINE_ROOT}/eval_output/eval_output.parquet",
-#        train_script_path='/app/train.py',
+    preprocessing_op = components.transform(
+        data=data.outputs["artifact"]
     )
+
+    datasplit_op = components.train_test_split(
+        data=preprocessing_op.outputs["data_proc"],
+        test_ratio=test_split_ratio,
+    )
+
+    # training_op = components.training(
+    #     train_file_parquet=datasplit_op.outputs['data_train'],
+    #     eval_file_parquet=datasplit_op.outputs['data_test'],
+    # )
+
 
 def run_pipeline():
     pipeline_file_path = str(CURRENT_DIR / "pipeline.json")
@@ -57,15 +62,21 @@ def run_pipeline():
         job_id=job_id,
         enable_caching=True,
         pipeline_root=PIPELINE_ROOT,
+        parameter_values={
+            "data_dir": "gs://bt-int-ml-specialization-ml-demo2/training_data/train_20240207.parquet",
+            "test_split_ratio": 0.2,
+        }
     )
 
-    aiplatform.init(project=PROJECT, location=REGION, experiment="demo2-black-friday-exp")
+    aiplatform.init(project=PROJECT, location=REGION,
+                    experiment="demo2-black-friday-exp")
 
     run.submit(
         service_account=f"ml-demo2-executor@{PROJECT}.iam.gserviceaccount.com",
         experiment="demo2-black-friday-exp",
     )
     return run
+
 
 if __name__ == "__main__":
     run_pipeline()
