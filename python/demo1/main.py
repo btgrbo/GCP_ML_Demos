@@ -4,7 +4,7 @@ import tensorflow as tf
 from fire import Fire
 
 
-def define_model_vars():
+def define_model_vars() -> tuple[int, int, tf.keras.optimizers.Optimizer.Adam, str]:
     # define variables for model
     batch_size = 32
     epochs = 2  # 10
@@ -14,7 +14,7 @@ def define_model_vars():
     return batch_size, epochs, optimizer, loss
 
 
-def preprocess(features):
+def preprocess(features: tf.data.TFRecordDataset) -> tuple[tf.Tensor, tf.Tensor]:
 
     # Define parsing schema
     keys_to_features = {
@@ -57,14 +57,16 @@ def preprocess(features):
     return tensors, label
 
 
-def load_raw_data(tft_record_path):
+def load_raw_data(tft_record_path: str) -> tf.data.TFRecordDataset:
 
     iodataset_train = tf.data.TFRecordDataset(tft_record_path)
 
     return iodataset_train
 
 
-def define_datasets(iodataset_train, batch_size, epochs):
+def define_datasets(iodataset_train: tf.data.TFRecordDataset,
+                    batch_size: int,
+                    epochs: int) -> tf.data.TFRecordDataset:
 
     # map preprocessing to datasets
     iodataset_train_proc = iodataset_train.map(preprocess)
@@ -99,7 +101,10 @@ def build_model(dropout_rate: float) -> tf.keras.models.Sequential:
     return model
 
 
-def compile_model(model, optimizer, learning_rate, loss):
+def compile_model(model: tf.keras.models.Sequential,
+                  optimizer: tf.keras.optimizers.Optimizer.Adam,
+                  learning_rate: float,
+                  loss: str) -> None:
     # Compile the model
     model.compile(optimizer=optimizer(learning_rate), loss=loss)
 
@@ -124,7 +129,7 @@ def fit_model(model: tf.keras.models.Sequential,
     return history
 
 
-def save_model(model, model_file):
+def save_model(model: tf.keras.models.Sequential, model_file: str) -> None:
     model.save(model_file)
     print(f"Model saved to {model_file}")
 
