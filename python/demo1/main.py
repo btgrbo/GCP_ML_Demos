@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import hypertune
 import os
 import tensorflow as tf
@@ -104,7 +102,7 @@ def build_model(dropout_rate: float) -> tf.keras.models.Sequential:
 
 
 def compile_model(model: tf.keras.models.Sequential,
-                  optimizer: tf.keras.optimizers.Optimizer.Adam,
+                  optimizer: tf.keras.optimizers,
                   learning_rate: float,
                   loss: str) -> None:
     # Compile the model
