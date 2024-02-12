@@ -139,6 +139,16 @@ def train_model(hidden_units: int,
                 data_split: dict[str, np.ndarray],
                 epochs: int,
                 batch_size: int) -> tuple[tf.keras.callbacks.History, tf.keras.models.Model]:
+
+    # Define the early stopping callback
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',  # Metric to monitor
+        patience=10,  # Number of epochs to wait after min has been hit
+        mode='min',  # Minimizing the monitored quantity ('val_loss' in this case)
+        verbose=1,
+        restore_best_weights=True  # Restores model weights from the epoch with the minimum monitored quantity
+    )
+
     # build model
     model = tf.keras.models.Sequential()
 
@@ -147,14 +157,6 @@ def train_model(hidden_units: int,
     model.add(tf.keras.layers.Dropout(0.01))  # Dropout layer after the input layer
 
     # Hidden layers
-    #model.add(tf.keras.layers.Dense(512, activation='relu'))
-    #model.add(tf.keras.layers.Dropout(0.05))  # Dropout layer after the input layer
-    #model.add(tf.keras.layers.Dense(256, activation='relu'))
-    #model.add(tf.keras.layers.Dropout(0.05))  # Dropout layer after the input layer
-    #model.add(tf.keras.layers.Dense(128, activation='relu'))
-    #model.add(tf.keras.layers.Dropout(0.05))  # Dropout layer after the input layer
-    #model.add(tf.keras.layers.Dense(64, activation='relu'))
-    #model.add(tf.keras.layers.Dropout(0.05))  # Dropout layer
     model.add(tf.keras.layers.Dense(32, activation='relu'))
     model.add(tf.keras.layers.Dropout(0.01))  # Dropout layer
     model.add(tf.keras.layers.Dense(16, activation='relu'))
@@ -168,18 +170,24 @@ def train_model(hidden_units: int,
 
     # Train model
     history = model.fit(data_split['X_train'], data_split['y_train'], epochs=epochs, batch_size=batch_size,
-                        validation_data=(data_split['X_test'], data_split['y_test']), shuffle=True)
+                        validation_data=(data_split['X_test'], data_split['y_test']), shuffle=True,
+                        callbacks=early_stopping)
 
     return history, model
 
 
+
 def plot_training(history: tf.keras.callbacks.History,
                   save_fig: bool,
-                  filename: str) -> None:
-
+                  filename: str,
+                  min_epoch: int) -> None:
     # Convert dimensions from cm to inches
     width_in_inches = 10 / 2.54
     height_in_inches = 8 / 2.54
+
+    # Hardcoded xlim and ylim values
+    xlim_values = (1, 60)  # Ensuring min_epoch is within the xlim
+    ylim_values = (1, 9)
 
     # Create a figure with the specified size
     plt.figure(figsize=(width_in_inches, height_in_inches))
@@ -191,10 +199,15 @@ def plot_training(history: tf.keras.callbacks.History,
     plt.plot(x_values, history.history['loss'], label='Training Loss')
     plt.plot(x_values, history.history['val_loss'], label='Validation Loss')
 
+    # Add a dashed vertical line at min_epoch
+    plt.axvline(x=min_epoch, color='k', linestyle='--', label=f'Min Epoch ({min_epoch})')
+
     # Set title, labels, and axes limits
     plt.title('Training and Validation Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
+    plt.xlim(xlim_values)
+    plt.ylim(ylim_values)
 
     # Hide top and right spines and adjust bottom and left spines
     plt.gca().spines['top'].set_visible(False)
@@ -202,13 +215,13 @@ def plot_training(history: tf.keras.callbacks.History,
     plt.gca().spines['bottom'].set_position(('outward', 10))
     plt.gca().spines['left'].set_position(('outward', 10))
 
-    # Set specific tick labels for x and y axes
-    plt.xticks([1, 4, 7, 10])
-    #plt.yticks([5, 10])
+    # Set specific tick labels for x and y axes (adjust as necessary)
+    plt.yticks([1, 5, 9])
+    plt.xticks([1, 30, 60])
 
     # Adjust tick parameters and add legend
     plt.tick_params(top=False, labeltop=False, right=False, labelright=False)
-    plt.legend()
+    #plt.legend()
 
     # Use tight layout to adjust subplot parameters
     plt.tight_layout()
@@ -334,7 +347,7 @@ def plot_feature_importance(mean_feature_importance: dict[str, float],
 
 # define variables
 limit: int = 1000000
-epochs: int = 10
+epochs: int = 100
 batch_size: int = 32
 learning_rate: float = 0.001
 test_size: float = 0.2
@@ -387,7 +400,7 @@ df_float = df_to_float(dataset=df_ohe)
 data_split = split_data(dataset=df_float, test_size=test_size)
 train_hist, trained_model = train_model(hidden_units=hidden_units, data_split=data_split, epochs=epochs,
                                         batch_size=batch_size)
-plot_training(history=train_hist, save_fig=True, filename='train_hist')
+plot_training(history=train_hist, save_fig=True, filename='train_hist', min_epoch=49)
 r2 = get_r2(model=trained_model, split_data=data_split)
 labels = df_float.columns.array[1:]
 mean_feature_importance, confidence_intervals = compute_feat_importance(orig_r2=r2,
@@ -415,22 +428,11 @@ df_time.drop(['start_minute'], axis=1, inplace=True)
 df_ohe = apply_ohe(dataset=df_time, cols=pred_nom, prefixs=prefix_pred)
 df_float = df_to_float(dataset=df_ohe)
 data_split = split_data(dataset=df_float, test_size=test_size)
-train_hist, trained_model = train_model(hidden_units=hidden_units, data_split=data_split, epochs=epochs,
-                                        batch_size=batch_size)
-plot_training(history=train_hist, save_fig=True, filename='train_hist')
-r2 = get_r2(model=trained_model, split_data=data_split)
-labels = df_float.columns.array[1:]
-mean_feature_importance, confidence_intervals = compute_feat_importance(orig_r2=r2,
-                                                                        labels=labels,
-                                                                        split_data=data_split,
-                                                                        prefixes=prefixes_input,
-                                                                        num_repetitions=num_repetitions_input,
-                                                                        subset_fraction=subset_fraction_input,
-                                                                        model=trained_model)
-plot_feature_importance(mean_feature_importance=mean_feature_importance,
-                        confidence_intervals=confidence_intervals,
-                        save_fig=True,
-                        filename='feature_importance')
+train_hist_imp, trained_model_imp = train_model(hidden_units=hidden_units, data_split=data_split, epochs=epochs,
+                                                batch_size=batch_size)
+plot_training(history=train_hist_imp, save_fig=True, filename='train_hist_imp')
+r2 = get_r2(model=trained_model_imp, split_data=data_split)
+
 
 
 
