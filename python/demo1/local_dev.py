@@ -2,6 +2,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import keras
 import pandas as pd
 import scipy.stats as stats
 from google.cloud import bigquery
@@ -13,6 +14,8 @@ from sklearn.metrics import r2_score
 random.seed(42)
 np.random.seed(42)
 tf.random.set_seed(42)
+
+keras.utils.set_random_seed(812)
 
 
 def get_data(dataset: str, limit: int, project: str) -> pd.DataFrame:
@@ -136,10 +139,28 @@ def train_model(hidden_units: int,
                 data_split: dict[str, np.ndarray],
                 epochs: int,
                 batch_size: int) -> tuple[tf.keras.callbacks.History, tf.keras.models.Model]:
-
     # build model
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.layers.Dense(hidden_units, activation='relu'))
+
+    # Input layer
+    model.add(tf.keras.layers.Dense(64, activation='relu'))
+    model.add(tf.keras.layers.Dropout(0.01))  # Dropout layer after the input layer
+
+    # Hidden layers
+    #model.add(tf.keras.layers.Dense(512, activation='relu'))
+    #model.add(tf.keras.layers.Dropout(0.05))  # Dropout layer after the input layer
+    #model.add(tf.keras.layers.Dense(256, activation='relu'))
+    #model.add(tf.keras.layers.Dropout(0.05))  # Dropout layer after the input layer
+    #model.add(tf.keras.layers.Dense(128, activation='relu'))
+    #model.add(tf.keras.layers.Dropout(0.05))  # Dropout layer after the input layer
+    #model.add(tf.keras.layers.Dense(64, activation='relu'))
+    #model.add(tf.keras.layers.Dropout(0.05))  # Dropout layer
+    model.add(tf.keras.layers.Dense(32, activation='relu'))
+    model.add(tf.keras.layers.Dropout(0.01))  # Dropout layer
+    model.add(tf.keras.layers.Dense(16, activation='relu'))
+    model.add(tf.keras.layers.Dropout(0.01))  # Dropout layer
+
+    # Output layer
     model.add(tf.keras.layers.Dense(1, activation='linear'))
 
     # Compile model
@@ -147,7 +168,7 @@ def train_model(hidden_units: int,
 
     # Train model
     history = model.fit(data_split['X_train'], data_split['y_train'], epochs=epochs, batch_size=batch_size,
-                        validation_data=(data_split['X_test'], data_split['y_test']))
+                        validation_data=(data_split['X_test'], data_split['y_test']), shuffle=True)
 
     return history, model
 
@@ -183,7 +204,7 @@ def plot_training(history: tf.keras.callbacks.History,
 
     # Set specific tick labels for x and y axes
     plt.xticks([1, 4, 7, 10])
-    plt.yticks([5, 10, 15])
+    #plt.yticks([5, 10])
 
     # Adjust tick parameters and add legend
     plt.tick_params(top=False, labeltop=False, right=False, labelright=False)
