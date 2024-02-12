@@ -9,6 +9,7 @@ matplotlib
 pandas
 pyarrow
 db-dtypes
+pydot
 
 # pipeline
 kfp

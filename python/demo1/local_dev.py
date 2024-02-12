@@ -5,6 +5,7 @@ import random
 import keras
 import pandas as pd
 import scipy.stats as stats
+import pickle
 from google.cloud import bigquery
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -217,7 +218,7 @@ def plot_training(history: tf.keras.callbacks.History,
 
     # Set specific tick labels for x and y axes (adjust as necessary)
     plt.yticks([1, 5, 9])
-    plt.xticks([1, 30, 60])
+    plt.xticks([1, 20, 60])
 
     # Adjust tick parameters and add legend
     plt.tick_params(top=False, labeltop=False, right=False, labelright=False)
@@ -400,6 +401,9 @@ df_float = df_to_float(dataset=df_ohe)
 data_split = split_data(dataset=df_float, test_size=test_size)
 train_hist, trained_model = train_model(hidden_units=hidden_units, data_split=data_split, epochs=epochs,
                                         batch_size=batch_size)
+trained_model.save('./trained_model.h5')
+with open('./train_hist.pkl', 'wb') as file:
+    pickle.dump(train_hist.history, file)
 plot_training(history=train_hist, save_fig=True, filename='train_hist', min_epoch=49)
 r2 = get_r2(model=trained_model, split_data=data_split)
 labels = df_float.columns.array[1:]
@@ -410,6 +414,10 @@ mean_feature_importance, confidence_intervals = compute_feat_importance(orig_r2=
                                                                         num_repetitions=num_repetitions_input,
                                                                         subset_fraction=subset_fraction_input,
                                                                         model=trained_model)
+with open('./mean_feature_importance.pkl', 'wb') as file:
+    pickle.dump(mean_feature_importance, file)
+with open('./confidence_intervals.pkl', 'wb') as file:
+    pickle.dump(confidence_intervals, file)
 plot_feature_importance(mean_feature_importance=mean_feature_importance,
                         confidence_intervals=confidence_intervals,
                         save_fig=True,
@@ -430,9 +438,17 @@ df_float = df_to_float(dataset=df_ohe)
 data_split = split_data(dataset=df_float, test_size=test_size)
 train_hist_imp, trained_model_imp = train_model(hidden_units=hidden_units, data_split=data_split, epochs=epochs,
                                                 batch_size=batch_size)
-plot_training(history=train_hist_imp, save_fig=True, filename='train_hist_imp')
-r2 = get_r2(model=trained_model_imp, split_data=data_split)
+trained_model_imp.save('./trained_model_imp.h5')
+with open('./train_hist_imp.pkl', 'wb') as file:
+    pickle.dump(train_hist_imp.history, file)
+plot_training(history=train_hist_imp, save_fig=True, filename='train_hist_imp', min_epoch=25)
+r2_imp = get_r2(model=trained_model_imp, split_data=data_split)
 
+tf.keras.utils.plot_model(trained_model_imp,
+                          to_file='./model_architecture.png',
+                          show_shapes=True,
+                          show_layer_names=True,
+                          dpi=300)
 
 
 
