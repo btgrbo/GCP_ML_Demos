@@ -78,11 +78,22 @@ def define_datasets(iodataset_train, batch_size, epochs):
     return iodataset_train_proc
 
 
-def build_model():
+def build_model(dropout_rate: float) -> tf.keras.models.Sequential:
 
-    # Build a neural network model using TensorFlow and Keras
+    # build model
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.layers.Dense(16, activation='relu', input_shape=(80,)))
+
+    # Input layer
+    model.add(tf.keras.layers.Dense(64, activation='relu', input_shape=(80,)))
+    model.add(tf.keras.layers.Dropout(dropout_rate))  # Dropout layer after the input layer
+
+    # Hidden layers
+    model.add(tf.keras.layers.Dense(32, activation='relu'))
+    model.add(tf.keras.layers.Dropout(dropout_rate))  # Dropout layer
+    model.add(tf.keras.layers.Dense(16, activation='relu'))
+    model.add(tf.keras.layers.Dropout(dropout_rate))  # Dropout layer
+
+    # Output layer
     model.add(tf.keras.layers.Dense(1, activation='linear'))
 
     return model
@@ -121,6 +132,7 @@ def save_model(model, model_file):
 def main(
         train_file_path: str,
         learning_rate: float,
+        dropout_rate: float
 ):
 
     batch_size, epochs, optimizer, loss = define_model_vars()
@@ -130,6 +142,7 @@ def main(
     compile_model(model, optimizer, learning_rate, loss)
     history = fit_model(model, iodataset_train_proc.take(int(batch_size*0.8)), epochs,
                         iodataset_train_proc.skip(int(batch_size*0.8)))
+    model = build_model(dropout_rate=dropout_rate)
     hp_metric = history.history['val_loss'][-1]
     hpt = hypertune.HyperTune()
     hpt.report_hyperparameter_tuning_metric(
