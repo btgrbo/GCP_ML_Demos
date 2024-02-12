@@ -4,7 +4,7 @@ import tensorflow as tf
 from fire import Fire
 
 
-def define_model_vars():
+def define_model_vars() -> tuple[int, int, tf.keras.optimizers.Optimizer.Adam, str]:
     # define variables for model
     batch_size = 32
     epochs = 2  # 10
@@ -14,7 +14,7 @@ def define_model_vars():
     return batch_size, epochs, optimizer, loss
 
 
-def preprocess(features):
+def preprocess(features: tf.data.TFRecordDataset) -> tuple[tf.Tensor, tf.Tensor]:
 
     # Define parsing schema
     keys_to_features = {
@@ -57,14 +57,16 @@ def preprocess(features):
     return tensors, label
 
 
-def load_raw_data(tft_record_path):
+def load_raw_data(tft_record_path: str) -> tf.data.TFRecordDataset:
 
     iodataset_train = tf.data.TFRecordDataset(tft_record_path)
 
     return iodataset_train
 
 
-def define_datasets(iodataset_train, batch_size, epochs):
+def define_datasets(iodataset_train: tf.data.TFRecordDataset,
+                    batch_size: int,
+                    epochs: int) -> tf.data.TFRecordDataset:
 
     # map preprocessing to datasets
     iodataset_train_proc = iodataset_train.map(preprocess)
@@ -78,29 +80,56 @@ def define_datasets(iodataset_train, batch_size, epochs):
     return iodataset_train_proc
 
 
-def build_model():
+def build_model(dropout_rate: float) -> tf.keras.models.Sequential:
 
-    # Build a neural network model using TensorFlow and Keras
+    # build model
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.layers.Dense(16, activation='relu', input_shape=(80,)))
+
+    # Input layer
+    model.add(tf.keras.layers.Dense(64, activation='relu', input_shape=(80,)))
+    model.add(tf.keras.layers.Dropout(dropout_rate))  # Dropout layer after the input layer
+
+    # Hidden layers
+    model.add(tf.keras.layers.Dense(32, activation='relu'))
+    model.add(tf.keras.layers.Dropout(dropout_rate))  # Dropout layer
+    model.add(tf.keras.layers.Dense(16, activation='relu'))
+    model.add(tf.keras.layers.Dropout(dropout_rate))  # Dropout layer
+
+    # Output layer
     model.add(tf.keras.layers.Dense(1, activation='linear'))
 
     return model
 
 
-def compile_model(model, optimizer, learning_rate, loss):
+def compile_model(model: tf.keras.models.Sequential,
+                  optimizer: tf.keras.optimizers.Optimizer.Adam,
+                  learning_rate: float,
+                  loss: str) -> None:
     # Compile the model
     model.compile(optimizer=optimizer(learning_rate), loss=loss)
 
 
-def fit_model(model, iodataset_train_proc, epochs, iodataset_eval_proc):
+def fit_model(model: tf.keras.models.Sequential,
+              iodataset_train_proc: tf.data.TFRecordDataset,
+              epochs: int,
+              iodataset_eval_proc: tf.data.TFRecordDataset) -> tf.keras.callbacks.History:
+
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',  # Metric to monitor
+        patience=10,  # Number of epochs to wait after min has been hit
+        mode='min',  # Minimizing the monitored quantity ('val_loss' in this case)
+        verbose=1,
+        restore_best_weights=True  # Restores model weights from the epoch with the minimum monitored quantity
+    )
+
     # fit model
-    history = model.fit(iodataset_train_proc, epochs=epochs, validation_data=iodataset_eval_proc)
+    history = model.fit(iodataset_train_proc, epochs=epochs, validation_data=iodataset_eval_proc,
+                        callbacks=early_stopping)
 
     return history
 
 
-def save_model(model, model_file):
+def save_model(model: tf.keras.models.Sequential, model_file: str) -> None:
     model.save(model_file)
     print(f"Model saved to {model_file}")
 
@@ -108,15 +137,23 @@ def save_model(model, model_file):
 def main(
         train_file_path: str,
         learning_rate: float,
+        dropout_rate: float
 ):
 
     batch_size, epochs, optimizer, loss = define_model_vars()
-    iodataset_train = load_raw_data(train_file_path)
-    iodataset_train_proc = define_datasets(iodataset_train, batch_size, epochs)
-    model = build_model()
-    compile_model(model, optimizer, learning_rate, loss)
-    history = fit_model(model, iodataset_train_proc.take(int(batch_size*0.8)), epochs,
-                        iodataset_train_proc.skip(int(batch_size*0.8)))
+    iodataset_train = load_raw_data(tft_record_path=train_file_path)
+    iodataset_train_proc = define_datasets(iodataset_train=iodataset_train,
+                                           batch_size=batch_size,
+                                           epochs=epochs)
+    model = build_model(dropout_rate=dropout_rate)
+    compile_model(model=model,
+                  optimizer=optimizer,
+                  learning_rate=learning_rate,
+                  loss=loss)
+    history = fit_model(model=model,
+                        iodataset_train_proc=iodataset_train_proc.take(int(batch_size*0.8)),
+                        epochs=epochs,
+                        iodataset_eval_proc=iodataset_train_proc.skip(int(batch_size*0.8)))
     hp_metric = history.history['val_loss'][-1]
     hpt = hypertune.HyperTune()
     hpt.report_hyperparameter_tuning_metric(
