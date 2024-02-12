@@ -1,10 +1,12 @@
+from typing import Tuple
+
 import hypertune
 import os
 import tensorflow as tf
 from fire import Fire
 
 
-def define_model_vars() -> tuple[int, int, tf.keras.optimizers.Optimizer.Adam, str]:
+def define_model_vars() -> tuple[int, int, tf.keras.optimizers, str]:
     # define variables for model
     batch_size = 32
     epochs = 2  # 10
