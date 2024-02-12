@@ -136,13 +136,19 @@ def main(
 ):
 
     batch_size, epochs, optimizer, loss = define_model_vars()
-    iodataset_train = load_raw_data(train_file_path)
-    iodataset_train_proc = define_datasets(iodataset_train, batch_size, epochs)
-    model = build_model()
-    compile_model(model, optimizer, learning_rate, loss)
-    history = fit_model(model, iodataset_train_proc.take(int(batch_size*0.8)), epochs,
-                        iodataset_train_proc.skip(int(batch_size*0.8)))
+    iodataset_train = load_raw_data(tft_record_path=train_file_path)
+    iodataset_train_proc = define_datasets(iodataset_train=iodataset_train,
+                                           batch_size=batch_size,
+                                           epochs=epochs)
     model = build_model(dropout_rate=dropout_rate)
+    compile_model(model=model,
+                  optimizer=optimizer,
+                  learning_rate=learning_rate,
+                  loss=loss)
+    history = fit_model(model=model,
+                        iodataset_train_proc=iodataset_train_proc.take(int(batch_size*0.8)),
+                        epochs=epochs,
+                        iodataset_eval_proc=iodataset_train_proc.skip(int(batch_size*0.8)))
     hp_metric = history.history['val_loss'][-1]
     hpt = hypertune.HyperTune()
     hpt.report_hyperparameter_tuning_metric(
