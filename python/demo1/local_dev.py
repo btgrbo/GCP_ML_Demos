@@ -398,8 +398,8 @@ df_time = process_timestamp(dataset=scaled_df, timestamp_name=timestamp_raw)
 df_ohe = apply_ohe(dataset=df_time, cols=pred_nom, prefixs=prefix_pred)
 df_float = df_to_float(dataset=df_ohe)
 data_split = split_data(dataset=df_float, test_size=test_size)
-#train_hist, trained_model = train_model(hidden_units=hidden_units, data_split=data_split, epochs=epochs,
-#                                        batch_size=batch_size)
+train_hist, trained_model = train_model(hidden_units=hidden_units, data_split=data_split, epochs=epochs,
+                                        batch_size=batch_size)
 plot_training(history=train_hist, save_fig=True, filename='train_hist', min_epoch=49)
 r2 = get_r2(model=trained_model, split_data=data_split)
 labels = df_float.columns.array[1:]
@@ -430,7 +430,7 @@ df_float = df_to_float(dataset=df_ohe)
 data_split = split_data(dataset=df_float, test_size=test_size)
 train_hist_imp, trained_model_imp = train_model(hidden_units=hidden_units, data_split=data_split, epochs=epochs,
                                                 batch_size=batch_size)
-plot_training(history=train_hist_imp, save_fig=True, filename='train_hist')
+plot_training(history=train_hist_imp, save_fig=True, filename='train_hist_imp')
 r2 = get_r2(model=trained_model_imp, split_data=data_split)
 
 
