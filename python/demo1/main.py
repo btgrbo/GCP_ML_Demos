@@ -93,9 +93,22 @@ def compile_model(model, optimizer, learning_rate, loss):
     model.compile(optimizer=optimizer(learning_rate), loss=loss)
 
 
-def fit_model(model, iodataset_train_proc, epochs, iodataset_eval_proc):
+def fit_model(model: tf.keras.models.Sequential,
+              iodataset_train_proc: tf.data.TFRecordDataset,
+              epochs: int,
+              iodataset_eval_proc: tf.data.TFRecordDataset) -> tf.keras.callbacks.History:
+
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',  # Metric to monitor
+        patience=10,  # Number of epochs to wait after min has been hit
+        mode='min',  # Minimizing the monitored quantity ('val_loss' in this case)
+        verbose=1,
+        restore_best_weights=True  # Restores model weights from the epoch with the minimum monitored quantity
+    )
+
     # fit model
-    history = model.fit(iodataset_train_proc, epochs=epochs, validation_data=iodataset_eval_proc)
+    history = model.fit(iodataset_train_proc, epochs=epochs, validation_data=iodataset_eval_proc,
+                        callbacks=early_stopping)
 
     return history
 
