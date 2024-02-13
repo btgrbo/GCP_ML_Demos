@@ -10,6 +10,7 @@ from google.cloud import bigquery
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score
+from sklearn.model_selection import cross_val_score
 
 # set random seeds for random, np and tf
 random.seed(42)
@@ -346,6 +347,24 @@ def plot_feature_importance(mean_feature_importance: dict[str, float],
     plt.show()
 
 
+def eval_variance(model:tf.keras.models.Model, X, y, cv:int = 10) -> None:
+    # Assuming X, y are your features and target variable
+    # Note: Setting scoring to 'neg_mean_squared_error' because cross_val_score returns negative values for MSE
+    scores = cross_val_score(model, X, y, cv=10, scoring='neg_mean_squared_error')
+
+    mse_scores = -scores  # Convert to positive MSE scores
+    print(f"MSE scores across folds: {mse_scores}")
+    print(f"Variance of MSE across folds: {np.var(mse_scores)}")
+
+
+def eval_bias(y_true, y_pred)-> None:
+    # Assuming y_true are the actual values and y_pred are the model predictions
+    errors = y_true - y_pred
+    mean_error = np.mean(errors)
+
+    print(f"Mean Error (Bias): {mean_error}")
+
+
 # define variables
 limit: int = 1000000
 epochs: int = 100
@@ -450,8 +469,10 @@ tf.keras.utils.plot_model(trained_model_imp,
                           show_layer_names=True,
                           dpi=300)
 
-
-
+# measure variance and bias #todo with hold out test dataset
+model = tf.keras.models.load_model('./python/demo1/test_data/trained_model_imp.h5')
+# eval_variance
+# eval_bias
 
 
 
