@@ -129,6 +129,9 @@ def pipeline(display_name: str = "demo1",
             "learning_rate": aiplatform.hyperparameter_tuning.DoubleParameterSpec(
                 min=0.001, max=1, scale="log"
             ),
+            "dropout_rate": aiplatform.hyperparameter_tuning.DoubleParameterSpec(
+                min=0.05, max=0.3, scale="linear"
+            ),
         }
     )
 
@@ -186,9 +189,6 @@ def pipeline(display_name: str = "demo1",
 
     # todo: use parent model to create different versions of model
     # todo: prio3: white paper
-    # todo: prio2: ci/cd for container with cloud build: main.py changes in devops should lead to new deployment
-    # todo: prio1: read instruction regarding application of the trained model: eg cloud function that reads json: mini
-    #  sript aiplatform to send to endpoint endpoint.predict
     # todo: prio4:metrics beim Training
     # todo: readme file for repo
 
