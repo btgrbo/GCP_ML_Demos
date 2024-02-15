@@ -32,8 +32,10 @@ TRANSFORM_STEPS = [
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--bq_table', required=True)
-    parser.add_argument('--project', default="bt-int-ml-specialization")
+    parser.add_argument('--df_run', required=False)
+    parser.add_argument('--bq_table',
+                        default='bt-int-ml-specialization.demo1.taxi_trips_ex_outlier_limited')
+    parser.add_argument('--project_id', default="bt-int-ml-specialization")
     parser.add_argument('--gcs_bucket',
                         default="gs://bt-int-ml-specialization_dataflow_demo1")
     parser.add_argument('--output_location',
@@ -41,22 +43,24 @@ def main(argv=None):
 
     known_args, pipeline_args = parser.parse_known_args(argv)
 
-    pipeline_options = PipelineOptions(pipeline_args)
+    pipeline_options = PipelineOptions(pipeline_args,
+                                       project=known_args.project_id  # needs to be set explicitly...
+                                       )
 
-    run_id = f"run_{datetime.utcnow().isoformat()}"
+    #run_id = f"run_{datetime.utcnow().isoformat()}"
 
-    artifact_location = f"{known_args.gcs_bucket}/transform_artifacts/{run_id}"
+    artifact_location = f"{known_args.gcs_bucket}/transform_artifacts/{known_args.df_run}"
 
     transform_fn = utils.get_batch_transform_fn(TRANSFORM_STEPS, artifact_location)
 
     read_bq = ReadFromBigQuery(
         table=known_args.bq_table,
-        project=known_args.project,
+        project=known_args.project_id,
         gcs_location=f"{known_args.gcs_bucket}/bigquery"
     )
 
     write_tf_record = WriteToTFRecord(
-        file_path_prefix=f"{known_args.output_location}/{run_id}",
+        file_path_prefix=f"{known_args.output_location}/{known_args.df_run}",
         file_name_suffix='.tfrecord'
     )
 

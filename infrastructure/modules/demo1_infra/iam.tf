@@ -60,6 +60,7 @@ data "google_iam_policy" "storage" {
         "serviceAccount:${google_service_account.dataflow_inference.email}",
         "serviceAccount:service-${var.project.number}@dataflow-service-producer-prod.iam.gserviceaccount.com",
       ],
+      [for sa in var.dataflow_invokers : "serviceAccount:${sa.email}"],
       var.admins,
     )
   }
@@ -69,4 +70,13 @@ data "google_iam_policy" "storage" {
 resource "google_storage_bucket_iam_policy" "storage" {
   bucket      = google_storage_bucket.dataflow_bucket.name
   policy_data = data.google_iam_policy.storage.policy_data
+}
+
+#############################################################
+# dataflow account
+
+resource "google_service_account_iam_binding" "dataflow_batch_binding" {
+  service_account_id = google_service_account.dataflow_batch.name
+  role               = "roles/iam.serviceAccountUser"
+  members            = [for sa in var.dataflow_invokers : "serviceAccount:${sa.email}"]
 }

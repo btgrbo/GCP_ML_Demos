@@ -77,6 +77,16 @@ data "google_iam_policy" "project_iam" {
     role    = "roles/dataflow.worker"
     members = [for sa in var.dataflow_accounts : "serviceAccount:${sa.email}"]
   }
+  binding {
+    role    = "roles/dataflow.admin"
+    members = concat(
+      [for sa in var.vertex_executors : "serviceAccount:${sa.email}"]
+    )
+  }
+  binding {
+    role    = "roles/bigquery.jobUser"
+    members = ["serviceAccount:${var.dataflow_accounts[0].email}"]
+  }
 }
 
 resource "google_project_iam_policy" "admins" {
