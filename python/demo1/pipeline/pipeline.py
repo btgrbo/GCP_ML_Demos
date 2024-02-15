@@ -16,7 +16,11 @@ from google_cloud_pipeline_components.v1.hyperparameter_tuning_job import Hyperp
 from google_cloud_pipeline_components.types import artifact_types
 from google_cloud_pipeline_components.v1.model import ModelUploadOp
 from google_cloud_pipeline_components.v1.endpoint import EndpointCreateOp, ModelDeployOp
+from google_cloud_pipeline_components.v1.dataflow import DataflowFlexTemplateJobOp
+from google_cloud_pipeline_components.v1.wait_gcp_resources import WaitGcpResourcesOp
 
+now = datetime.now()
+JOB_ID = f"demo1-{now:%Y-%m-%d-%H-%M-%S}" #f"run_{datetime.utcnow().isoformat()}"
 PROJECT = "bt-int-ml-specialization"
 REGION = "europe-west3"
 DESTINATION_DATASET = "demo1"
@@ -87,8 +91,32 @@ def pipeline(display_name: str = "demo1",
              parallel_trial_count: int = 1,
              base_output_directory: str = PIPELINE_ROOT,
              project: str = PROJECT,
-             region: str = REGION, ):
+             region: str = REGION,
+             ):
     """Pipeline to train a custom model on the chicago taxi driver dataset."""
+
+    # Launch the Dataflow Flex Template job
+    dataflow_batch_op = DataflowFlexTemplateJobOp(
+        project=PROJECT,
+        location=REGION,
+        container_spec_gcs_path=f'gs://{PROJECT}_dataflow_demo1/templates/demo1-batch.json',
+        job_name='batchpreprocess',
+        num_workers=1,
+        max_workers=1,
+        service_account_email=f"d1-dataflow-batch-runner@{PROJECT}.iam.gserviceaccount.com",
+        temp_location=f"gs://{PROJECT}_dataflow_demo1/batch/temp",
+        machine_type="n1-standard-2",
+        subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
+        staging_location=f"gs://{PROJECT}_dataflow_demo1/batch/staging",
+        parameters={'project_id': PROJECT,
+                    'df_run': JOB_ID},
+        ip_configuration='WORKER_IP_PRIVATE'
+    )
+
+    dataflow_wait_op = WaitGcpResourcesOp(
+        gcp_resources=dataflow_batch_op.outputs["gcp_resources"]
+    )
+
 
     command = [
         "python",
@@ -96,7 +124,8 @@ def pipeline(display_name: str = "demo1",
     ]
     args = [
         "--train_file_path",
-        "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-02-08T17:04:29.494733-00000-of-00001.tfrecord"
+        #"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-02-08T17:04:29.494733-00000-of-00001.tfrecord"
+        "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/" + JOB_ID + "-00000-of-00001.tfrecord"
     ]
 
     # The spec of the worker pools including machine type and Docker image
@@ -135,6 +164,7 @@ def pipeline(display_name: str = "demo1",
         }
     )
 
+
     tuning_op = HyperparameterTuningJobRunOp(
         display_name="hpt_demo1",
         project=project,
@@ -146,6 +176,8 @@ def pipeline(display_name: str = "demo1",
         parallel_trial_count=parallel_trial_count,
         base_output_directory=base_output_directory,
     )
+
+    tuning_op.after(dataflow_wait_op)
 
     best_trial_op = GetBestTrialOp(
         gcp_resources=tuning_op.outputs["gcp_resources"], study_spec_metrics=study_spec_metrics
@@ -197,14 +229,12 @@ def run_pipeline():
     pipeline_file_path = str(CURRENT_DIR / "pipeline.json")
     compiler.Compiler().compile(pipeline, pipeline_file_path)
 
-    now = datetime.now()
-    job_id = f"demo1-{now:%Y-%m-%d-%H-%M-%S}"
     run = aiplatform.PipelineJob(
         project=PROJECT,
         location=REGION,
         display_name="demo1",
         template_path=pipeline_file_path,
-        job_id=job_id,
+        job_id=JOB_ID,
         enable_caching=False,
         pipeline_root=PIPELINE_ROOT,
     )
