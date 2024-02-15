@@ -1,4 +1,4 @@
-!/bin/bash
+# !/bin/bash
 
 # To make this script work, you need to install docker and gcloud
 # also, you need to login to gcloud using `gcloud auth login` and `gcloud auth application-default login`
