@@ -10,14 +10,13 @@ This pipeline
 from datetime import datetime
 from pathlib import Path
 
-from google.cloud import aiplatform
-from kfp import dsl, compiler
-
 import components
+from google.cloud import aiplatform
+from kfp import compiler, dsl
 
 PROJECT = "bt-int-ml-specialization"
 REGION = "europe-west3"
-PIPELINE_ROOT = f"gs://bt-int-ml-specialization-ml-demo2"
+PIPELINE_ROOT = "gs://bt-int-ml-specialization-ml-demo2"
 CURRENT_DIR = Path(__file__).parent
 
 
@@ -46,6 +45,10 @@ def pipeline(data_dir: str, test_split_ratio: float):
     #     train_file_parquet=datasplit_op.outputs['data_train'],
     #     eval_file_parquet=datasplit_op.outputs['data_test'],
     # )
+
+    aiplatform.CustomContainerTrainingJob()
+
+    
 
 
 def run_pipeline():
