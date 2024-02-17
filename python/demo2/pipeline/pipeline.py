@@ -12,6 +12,8 @@ from pathlib import Path
 
 import components
 from google.cloud import aiplatform
+from google_cloud_pipeline_components.v1.endpoint import EndpointCreateOp, ModelDeployOp
+from google_cloud_pipeline_components.v1.model import ModelUploadOp
 from kfp import compiler, dsl
 
 PROJECT = "bt-int-ml-specialization"
@@ -24,7 +26,7 @@ CURRENT_DIR = Path(__file__).parent
     name='Vertex AI demo',
     description='Vertex AI demo'
 )
-def pipeline(data_dir: str, test_split_ratio: float):
+def pipeline(display_name: str, data_dir: str, test_split_ratio: float):
     """Pipeline to train a custom model on the Black Friday dataset."""
 
     data = dsl.importer(
@@ -41,14 +43,35 @@ def pipeline(data_dir: str, test_split_ratio: float):
         test_ratio=test_split_ratio,
     )
 
-    # training_op = components.training(
-    #     train_file_parquet=datasplit_op.outputs['data_train'],
-    #     eval_file_parquet=datasplit_op.outputs['data_test'],
-    # )
+    training_op = components.training(
+        train_file_parquet=datasplit_op.outputs["data_train"],
+        eval_file_parquet=datasplit_op.outputs["data_test"],
+    )
 
-    aiplatform.CustomContainerTrainingJob()
+    unmanaged_model_importer = components.import_model(
+        model_artifact=training_op.outputs["model_file"],
+    )
 
-    
+    model_upload_op = ModelUploadOp(
+        display_name=display_name,
+        unmanaged_container_model=unmanaged_model_importer.outputs["model"],
+        project=PROJECT,
+        location=REGION,
+    )
+
+    endpoint = EndpointCreateOp(
+        display_name=f"{display_name}_endpoint",
+        location=REGION,
+    )
+
+    _ = ModelDeployOp(
+        model=model_upload_op.outputs["model"],
+        endpoint=endpoint.outputs["endpoint"],
+        dedicated_resources_machine_type="n1-standard-2",
+        dedicated_resources_min_replica_count=1,
+        dedicated_resources_max_replica_count=1,
+        service_account=f"ml-demo1-predictor@{PROJECT}.iam.gserviceaccount.com",
+    )
 
 
 def run_pipeline():
@@ -66,9 +89,10 @@ def run_pipeline():
         enable_caching=True,
         pipeline_root=PIPELINE_ROOT,
         parameter_values={
+            "display_name": "demo2",
             "data_dir": "gs://bt-int-ml-specialization-ml-demo2/training_data/train_20240207.parquet",
             "test_split_ratio": 0.2,
-        }
+        },
     )
 
     aiplatform.init(project=PROJECT, location=REGION,
