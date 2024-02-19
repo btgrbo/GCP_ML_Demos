@@ -3,68 +3,6 @@ import pandas as pd
 
 from pathlib import Path
 from fire import Fire
-from sklearn.base import TransformerMixin
-from sklearn.preprocessing import OneHotEncoder
-
-
-class BlackFridayTransformer(TransformerMixin):
-    """Class for dynamic input of the black friday (sales data)"""
-
-    def __init__(self):
-        pass
-
-    def fit(self, X, y=None):
-        return self
-    
-    def transform(self, X):
-        # Filling NULL values in Product_Category_2 and Product_Category_3
-        X['Product_Category_2_new'] = X['Product_Category_2'].fillna(1)
-        X['Product_Category_3_new'] = X['Product_Category_3'].fillna(2)
-        
-        # Mapping gender to a numerical value
-        X['Gender_New'] = X['Gender'].map({'M': 0, 'F': 1})
-        
-        # One-Hot Encoding for Age groups
-        # Fit für die entsprechende Variable anwenden, bevor transform ausgeführt wird
-        # In das bestehende Framework mit einbauen
-
-        age_encoder = OneHotEncoder(drop='first', sparse_output=False)
-        age_encoded = age_encoder.fit_transform(X[['Age']])
-        age_columns = [f'age_{age}' for age in age_encoder.categories_[0][1:]]
-        X[age_columns] = pd.DataFrame(age_encoded, columns=age_columns, index=X.index)
-        
-        # One-Hot Encoding for City categories
-        city_encoder = OneHotEncoder(drop='first', sparse_output=False)
-        city_encoded = city_encoder.fit_transform(X[['City_Category']])
-        city_columns = [f'city_category_{city}' for city in city_encoder.categories_[0][1:]]
-        X[city_columns] = pd.DataFrame(city_encoded, columns=city_columns, index=X.index)
-        
-        # One-Hot Encoding for Stay in city
-        stay_encoder = OneHotEncoder(drop='first', sparse_output=False)
-        stay_encoded = stay_encoder.fit_transform(X[['Stay_In_Current_City_Years']])
-        stay_columns = [f'stay_{years}_years' for years in stay_encoder.categories_[0][1:]]
-        X[stay_columns] = pd.DataFrame(stay_encoded, columns=stay_columns, index=X.index)
-        
-        # Renaming columns
-        X = X.rename(columns={
-            'Purchase': 'purchase',
-            'Occupation': 'occupation',
-            'Marital_Status': 'marital_status',
-            'Gender_New': 'gender',
-            'Product_Category_1': 'product_category_1',
-            'Product_Category_2_new': 'product_category_2',
-            'Product_Category_3_new': 'product_category_3',
-        })
-
-        # Selecting relevant columns
-        selected_columns = [
-            'purchase', 'occupation', 'marital_status', 'gender',
-            'product_category_1', 'product_category_2', 'product_category_3',
-            *age_columns, *city_columns, *stay_columns
-        ]
-        
-        return X[selected_columns]
-
 
 # Main function for training execution
 def main(
@@ -82,12 +20,10 @@ def main(
 
     # Load and transform training data
     train = pd.read_parquet(train_file_parquet)
-    transformer = BlackFridayTransformer()
-    train_transformed = transformer.transform(train)
 
-    # Split the transformed data into features and target
-    X_train = train_transformed.drop(columns=['purchase'])
-    y_train = train_transformed['purchase']
+    # Split the data into features and target
+    X_train = train.drop(columns=['purchase'])
+    y_train = train['purchase']
 
     # Create and train XGB model
     model = xgb.XGBRegressor()
@@ -97,12 +33,11 @@ def main(
 
     # Load and transform evaluation data
     eval_data = pd.read_parquet(eval_file_parquet)
-    eval_transformed = transformer.transform(eval_data)
 
-    # Make predictions on the transformed evaluation data
-    eval_predictions = model.predict(eval_transformed.drop(columns=['purchase']))
-    eval_transformed['prediction'] = eval_predictions
-    eval_transformed.to_parquet(eval_output_file_parquet, index=False)
+    # Make predictions on the evaluation data
+    eval_predictions = model.predict(eval_data.drop(columns=['purchase']))
+    eval_data['prediction'] = eval_predictions
+    eval_data.to_parquet(eval_output_file_parquet, index=False)
     print(f"Eval saved to {eval_output_file_parquet}")
 
 if __name__ == '__main__':
@@ -124,7 +59,7 @@ if __name__ == '__main__':
 
 # docker images 
 # pip freeze
-    
+
 # Git commands
 # cd "C:\Users\OliverNowakbtelligen\OneDrive - b.telligent group\Desktop\Tickets"
 # git clone git@github.com:btgrbo/GCP_ML_Demos.git
