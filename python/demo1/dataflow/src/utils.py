@@ -90,15 +90,17 @@ def add_date_info_fn(element: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_prediction(
-        instances: Union[dict, list[dict]]) -> list:
+        instances, endpoint_id):
     """
     `instances` can be either single instance of type dict or a list
     of instances.
     """
 
-    project: str = '738673379845'
-    endpoint_id: str = '7097593847898701824'
-    location: str = "europe-west3"
+    instances = instances.as_dict()
+
+    #project: str = '738673379845'
+    #endpoint_id: str = '2134275214815526912'
+    #location: str = "europe-west3"
 
     # Specify the order of features
     feature_order = ['start_month', 'start_date', 'day_of_week', 'start_hour', 'trip_miles', 'trip_seconds',
@@ -115,7 +117,8 @@ def get_prediction(
 
     input_dict_list = [{"dense_input": dense_input_list}]
 
-    endpoint = aiplatform.Endpoint(endpoint_name=endpoint_id, project=project, location=location)
+    #endpoint = aiplatform.Endpoint(endpoint_name=endpoint_id, project=project, location=location)
+    endpoint = aiplatform.Endpoint(endpoint_name=endpoint_id)
     response = endpoint.predict(instances=input_dict_list)
 
     # The predictions are a google.protobuf.Value representation of the model's predictions.

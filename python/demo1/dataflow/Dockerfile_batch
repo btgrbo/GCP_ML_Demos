@@ -16,6 +16,3 @@ COPY main_batch.py ./main.py
 # ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE="/dataflow/template/requirements.txt"
 ENV FLEX_TEMPLATE_PYTHON_PY_FILE="/dataflow/template/main.py"
 ENV FLEX_TEMPLATE_PYTHON_SETUP_FILE="/dataflow/template/setup.py"
-
-#ENTRYPOINT ["python", "main.py", "--job_id=${job_id}"]
-#CMD ["--help"]

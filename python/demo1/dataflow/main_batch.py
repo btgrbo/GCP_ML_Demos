@@ -32,7 +32,7 @@ TRANSFORM_STEPS = [
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--df_run', required=False)
+    parser.add_argument('--df_run', required=True)
     parser.add_argument('--bq_table',
                         default='bt-int-ml-specialization.demo1.taxi_trips_ex_outlier_limited')
     parser.add_argument('--project_id', default="bt-int-ml-specialization")

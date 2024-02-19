@@ -12,6 +12,7 @@ PUBSUB_SINK_TOPIC="projects/${PROJECT}/topics/demo1-event-sink"
 BUCKET_NAME="gs://${PROJECT}_dataflow_demo1"
 TEMPLATE_PATH="$BUCKET_NAME/templates/demo1-inference.json"
 TEMPLATE_IMAGE="$REGION-docker.pkg.dev/$PROJECT/ml-demo1/dataflow_inference:latest"
+ENDPOINT_ID="projects/738673379845/locations/europe-west3/endpoints/2134275214815526912"
 
 gcloud dataflow flex-template build $TEMPLATE_PATH \
     --image="$TEMPLATE_IMAGE" \
@@ -26,6 +27,7 @@ gcloud dataflow flex-template run "demo1-inference-`date +%Y%m%d-%H%M%S`" \
     --parameters pubsub_sink_topic="$PUBSUB_SINK_TOPIC" \
     --parameters pubsub_source_subscription="$PUBSUB_SOURCE_SUBSCRIPTION" \
     --parameters transform_artifact_location="$TRANSFORM_ARTIFACT_LOCATION" \
+    --parameters endpoint_id="$ENDPOINT_ID"\
     --project="$PROJECT" \
     --region="$REGION" \
     --service-account-email="d1-dataflow-inference-runner@$PROJECT.iam.gserviceaccount.com" \
