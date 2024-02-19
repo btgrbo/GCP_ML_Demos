@@ -26,7 +26,7 @@ CURRENT_DIR = Path(__file__).parent
     name='Vertex AI demo',
     description='Vertex AI demo'
 )
-def pipeline(display_name: str, data_dir: str, test_split_ratio: float):
+def pipeline(display_name: str, data_dir: str, eval_split_ratio: float):
     """Pipeline to train a custom model on the Black Friday dataset."""
 
     data = dsl.importer(
@@ -38,9 +38,9 @@ def pipeline(display_name: str, data_dir: str, test_split_ratio: float):
         data=data.outputs["artifact"]
     )
 
-    datasplit_op = components.train_test_split(
+    datasplit_op = components.train_eval_split(
         data=preprocessing_op.outputs["data_proc"],
-        test_ratio=test_split_ratio,
+        eval_ratio=eval_split_ratio,
     )
 
     training_op = components.training(
@@ -48,13 +48,18 @@ def pipeline(display_name: str, data_dir: str, test_split_ratio: float):
         eval_file_parquet=datasplit_op.outputs["data_test"],
     )
 
+    predictor_pipeline_op = components.create_pipeline(
+        preprocessor=preprocessing_op.outputs["preprocessor"],
+        model=training_op.outputs["model"],
+    )
+
     unmanaged_model_importer = components.import_model(
-        model_artifact=training_op.outputs["model_file"],
+        model_artifact=predictor_pipeline_op.outputs["pipeline"],
     )
 
     model_upload_op = ModelUploadOp(
         display_name=display_name,
-        unmanaged_container_model=unmanaged_model_importer.outputs["model"],
+        unmanaged_container_model=unmanaged_model_importer.outputs["artifact"],
         project=PROJECT,
         location=REGION,
     )
@@ -70,7 +75,7 @@ def pipeline(display_name: str, data_dir: str, test_split_ratio: float):
         dedicated_resources_machine_type="n1-standard-2",
         dedicated_resources_min_replica_count=1,
         dedicated_resources_max_replica_count=1,
-        service_account=f"ml-demo1-predictor@{PROJECT}.iam.gserviceaccount.com",
+        service_account=f"ml-demo2-predictor@{PROJECT}.iam.gserviceaccount.com",
     )
 
 
@@ -91,7 +96,7 @@ def run_pipeline():
         parameter_values={
             "display_name": "demo2",
             "data_dir": "gs://bt-int-ml-specialization-ml-demo2/training_data/train_20240207.parquet",
-            "test_split_ratio": 0.2,
+            "eval_split_ratio": 0.2,
         },
     )
 

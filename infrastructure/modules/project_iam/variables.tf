@@ -6,13 +6,13 @@ variable "project" {
 }
 
 variable "project_admins" {
-    type = list(string)
+  type = list(string)
 }
 
 variable "aiplatform_service" {
-    type = object({
-      service = string
-    })
+  type = object({
+    service = string
+  })
 }
 
 variable "vertex_executors" {
@@ -28,6 +28,12 @@ variable "cloudbuild_sa" {
 }
 
 variable "dataflow_accounts" {
+  type = list(object({
+    email = string
+  }))
+}
+
+variable "logger_accounts" {
   type = list(object({
     email = string
   }))

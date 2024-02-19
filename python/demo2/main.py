@@ -21,8 +21,8 @@ def main(
     train = pd.read_parquet(train_file_parquet)
 
     # Split the transformed data into features and target
-    X_train = train.drop(columns=["purchase"])
-    y_train = train["purchase"]
+    X_train = train.drop(columns=["Purchase"])
+    y_train = train["Purchase"]
 
     # Create and train XGB model
     model = xgb.XGBRegressor()
@@ -34,8 +34,8 @@ def main(
     eval = pd.read_parquet(eval_file_parquet)
 
     # Make predictions on the transformed evaluation data
-    eval_predictions = model.predict(eval.drop(columns=["purchase"]))
-    eval["prediction"] = eval_predictions
+    eval_predictions = model.predict(eval.drop(columns=["Purchase"]))
+    eval["Prediction"] = eval_predictions
     eval.to_parquet(eval_output_file_parquet, index=False)
     print(f"Eval saved to {eval_output_file_parquet}")
 

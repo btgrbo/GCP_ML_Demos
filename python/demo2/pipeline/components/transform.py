@@ -12,20 +12,29 @@ def transform(
 ):
     preprocessor.framework = "sklearn"
 
-    from sklearn.compose import ColumnTransformer
-    from sklearn.preprocessing import StandardScaler
-    import pandas as pd
     import pickle
     from pathlib import Path
+
+    import pandas as pd
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import OneHotEncoder
 
     data = pd.read_parquet(data.path)
 
     pipe = ColumnTransformer(
         [
-            # ('scaler', StandardScaler(), ['x']),
-            ('drop_columns', 'drop', ['User_ID', 'Product_ID'])
+            (
+                "drop_columns",
+                "drop",
+                ["User_ID", "Product_ID", "Product_Category_1", "Product_Category_2", "Product_Category_3"],
+            ),
+            (
+                "one-hot",
+                OneHotEncoder(drop="first", sparse_output=False),
+                ["Gender", "Age", "City_Category", "Stay_In_Current_City_Years"],
+            ),
         ],
-        remainder='passthrough',
+        remainder="passthrough",
         verbose_feature_names_out=False,
     )
 
@@ -41,18 +50,31 @@ def transform(
 
 
 # if __name__ == "__main__":
-#     import pandas as pd
 #     from io import BytesIO
 #     from unittest.mock import Mock
-#
-#     df = pd.DataFrame({"foo": range(3), "User_ID": range(3), "Product_ID": range(3)})
-#
+
+#     import pandas as pd
+
+#     df = pd.DataFrame(
+#         {
+#             "foo": range(3),
+#             "User_ID": range(3),
+#             "Product_ID": range(3),
+#             "Product_Category_1": range(3),
+#             "Product_Category_2": range(3),
+#             "Product_Category_3": range(3),
+#             "Gender": [str(i) for i in range(3)],
+#             "Age": [str(i) for i in range(3)],
+#             "City_Category": [str(i) for i in range(3)],
+#             "Stay_In_Current_City_Years": [str(i) for i in range(3)],
+#         }
+#     )
+
 #     buf = BytesIO()
 #     df.to_parquet(buf)
 #     buf.seek(0)
-#
+
 #     data = Mock()
 #     data.path = buf
-#
-#     transform.python_func(Mock(path=buf), Mock(path="/tmp/foo1"),
-#                           Mock(path="/tmp/foo1"))
+
+#     transform.python_func(Mock(path=buf), Mock(path="/tmp/foo1"), Mock(path="/tmp/foo1"))

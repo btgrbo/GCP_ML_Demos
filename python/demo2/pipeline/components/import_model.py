@@ -7,9 +7,13 @@ components = ["google-cloud-pipeline-components"]
 @dsl.component(base_image="python:3.10", packages_to_install=components)
 def import_model(
     model_artifact: dsl.Input[dsl.Model],
-    model: dsl.Output[artifact_types.UnmanagedContainerModel],
+    artifact: dsl.Output[artifact_types.UnmanagedContainerModel],
 ):
-    model.artifact_uri = model_artifact.uri
-    model.metadata = {
-        "containerSpec": {"imageUri": "europe-docker.pkg.dev/vertex-ai/prediction/xgboost-cpu.1-7:latest"}
+
+    parent_uri = "/".join(model_artifact.uri.split("/")[0:-1])
+    artifact.uri = parent_uri
+    artifact.metadata = {
+        "containerSpec": {
+            "imageUri": "europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo2/xgboost-cpu.2-0:latest"
+        }
     }
