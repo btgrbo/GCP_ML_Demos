@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--pubsub_source_subscription', required=True)
     parser.add_argument('--pubsub_sink_topic', required=True)
     parser.add_argument('--transform_artifact_location', required=True)
+    parser.add_argument('--endpoint_name', required=True)
     parser.add_argument('--project_id', default="bt-int-ml-specialization")
 
     known_args, pipeline_args = parser.parse_known_args()
@@ -39,6 +40,8 @@ def main():
         known_args.transform_artifact_location
     )
 
+    prediction_fn = utils.get_prediction
+
     read_pubsub = ReadFromPubSub(subscription=known_args.pubsub_source_subscription)
     write_pubsub = WriteToPubSub(topic=known_args.pubsub_sink_topic)
 
@@ -50,7 +53,7 @@ def main():
                 | "WindowInto" >> beam.WindowInto(window.FixedWindows(1))  # TODO: why?
                 | "AddDateInfo" >> beam.Map(utils.add_date_info_fn)
                 | "Transform" >> transform_fn
-                | "SendToModelEndpoint" >> beam.Map(lambda x: utils.get_prediction(x.as_dict()))
+                | "SendToModelEndpoint" >> beam.Map(lambda x: prediction_fn(x, known_args.endpoint_name))
                 | "WriteToPubSub" >> write_pubsub
         )
 

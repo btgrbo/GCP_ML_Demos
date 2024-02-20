@@ -7,6 +7,7 @@ This pipeline
   - trains a custom model on the train dataset
 """
 
+
 from datetime import datetime
 from pathlib import Path
 from google.cloud import aiplatform
@@ -15,20 +16,24 @@ from google_cloud_pipeline_components.v1 import hyperparameter_tuning_job
 from google_cloud_pipeline_components.v1.hyperparameter_tuning_job import HyperparameterTuningJobRunOp
 from google_cloud_pipeline_components.types import artifact_types
 from google_cloud_pipeline_components.v1.model import ModelUploadOp
-from google_cloud_pipeline_components.v1.endpoint import EndpointCreateOp, ModelDeployOp
+from google_cloud_pipeline_components.v1.endpoint import ModelDeployOp
 from google_cloud_pipeline_components.v1.dataflow import DataflowFlexTemplateJobOp
 from google_cloud_pipeline_components.v1.wait_gcp_resources import WaitGcpResourcesOp
 
 now = datetime.now()
-JOB_ID = f"demo1-{now:%Y-%m-%d-%H-%M-%S}" #f"run_{datetime.utcnow().isoformat()}"
+JOB_ID = f"demo1-{now:%Y-%m-%d-%H-%M-%S}"
 PROJECT = "bt-int-ml-specialization"
 REGION = "europe-west3"
-DESTINATION_DATASET = "demo1"
-DESTINATION_TABLE_NAME_TRAIN = "taxi_trips_model_input_train"
-DESTINATION_TABLE_NAME_EVAL = "taxi_trips_model_input_eval"
-PIPELINE_ROOT = f"gs://bt-int-ml-specialization-ml-demo1"
+PIPELINE_ROOT = f"gs://{PROJECT}-ml-demo1"
 CURRENT_DIR = Path(__file__).parent
 DEPLOY_IMAGE = "europe-docker.pkg.dev/vertex-ai/prediction/tf2-cpu.2-13:latest"
+PUBSUB_SINK_TOPIC = f"projects/{PROJECT}/topics/demo1-event-sink"
+PUBSUB_SOURCE_SUBSCRIPTION = f"projects/{PROJECT}/subscriptions/demo1-event-source-subscription"
+TRANSFORM_ARTIFACT_LOCATION = f"gs://{PROJECT}_dataflow_demo1/transform_artifacts/{JOB_ID}"
+ENDPOINT_ID = '2134275214815526912'
+PROJECT_ID = '738673379845'
+ENDPOINT_NAME = f"projects/{PROJECT_ID}/locations/{REGION}/endpoints/{ENDPOINT_ID}"
+ENDPOINT_URI = f"https://{REGION}-aiplatform.googleapis.com/v1/{ENDPOINT_NAME}"
 
 
 @dsl.component(base_image="python:3.10", packages_to_install=["google-cloud-aiplatform"])
@@ -43,7 +48,7 @@ def model_dir(base_output_directory: str, best_trial: str) -> str:
 @dsl.component(
     packages_to_install=['google-cloud-aiplatform',
                          'google-cloud-pipeline-components',
-                         'protobuf'], base_image='python:3.7')
+                         'protobuf'], base_image='python:3.10')
 def GetBestTrialOp(gcp_resources: str, study_spec_metrics: list) -> str:
     from google.cloud import aiplatform
     from google_cloud_pipeline_components.proto.gcp_resources_pb2 import GcpResources
@@ -84,7 +89,7 @@ def GetBestTrialOp(gcp_resources: str, study_spec_metrics: list) -> str:
 
 @dsl.pipeline(
     name='Vertex AI demo1',
-    description='Vertex AI demo1'
+    description='Vertex AI demo1',
 )
 def pipeline(display_name: str = "demo1",
              max_trial_count: int = 1,
@@ -116,7 +121,6 @@ def pipeline(display_name: str = "demo1",
     dataflow_wait_op = WaitGcpResourcesOp(
         gcp_resources=dataflow_batch_op.outputs["gcp_resources"]
     )
-
 
     command = [
         "python",
@@ -164,7 +168,6 @@ def pipeline(display_name: str = "demo1",
         }
     )
 
-
     tuning_op = HyperparameterTuningJobRunOp(
         display_name="hpt_demo1",
         project=project,
@@ -204,20 +207,47 @@ def pipeline(display_name: str = "demo1",
     )
 
     # todo: {model_version} add model version to display name
-    endpoint = EndpointCreateOp(
-        display_name=f"demo1_endpoint",
-        location=REGION,
-    )
+
+    endpoint_importer = dsl.importer(
+        artifact_uri=ENDPOINT_URI,
+        artifact_class=artifact_types.VertexEndpoint,
+        metadata={
+            "resourceName": ENDPOINT_NAME
+        }
+    ).output
 
     model_deploy_op = ModelDeployOp(
         model=model_upload_op.outputs["model"],
-        endpoint=endpoint.outputs["endpoint"],
+        endpoint=endpoint_importer,
         dedicated_resources_machine_type="n1-standard-2",
         dedicated_resources_min_replica_count=1,
         dedicated_resources_max_replica_count=1,
         service_account=f"ml-demo1-predictor@{PROJECT}.iam.gserviceaccount.com",
     )
 
+    # Launch the Dataflow Flex Template job
+    dataflow_inf_op = DataflowFlexTemplateJobOp(
+        enable_streaming_engine=True,
+        ip_configuration='WORKER_IP_PRIVATE',
+        num_workers=1,
+        max_workers=1,
+        parameters={'project_id': PROJECT,
+                    'pubsub_sink_topic': PUBSUB_SINK_TOPIC,
+                    'pubsub_source_subscription': PUBSUB_SOURCE_SUBSCRIPTION,
+                    'transform_artifact_location': TRANSFORM_ARTIFACT_LOCATION,
+                    'endpoint_id': ENDPOINT_NAME},
+        project=PROJECT,
+        location=REGION,
+        service_account_email=f"d1-dataflow-inference-runner@{PROJECT}.iam.gserviceaccount.com",
+        container_spec_gcs_path=f'gs://{PROJECT}_dataflow_demo1/templates/demo1-inference.json',
+        job_name='demo1-inference',
+        staging_location=f"gs://{PROJECT}_dataflow_demo1/inference/staging",
+        subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
+        temp_location=f"gs://{PROJECT}_dataflow_demo1/inference/temp",
+        machine_type="n1-standard-2"
+    )
+
+    dataflow_inf_op.after(model_deploy_op)
 
     # todo: use parent model to create different versions of model
     # todo: prio3: white paper
@@ -235,7 +265,7 @@ def run_pipeline():
         display_name="demo1",
         template_path=pipeline_file_path,
         job_id=JOB_ID,
-        enable_caching=False,
+        enable_caching=True,
         pipeline_root=PIPELINE_ROOT,
     )
 
