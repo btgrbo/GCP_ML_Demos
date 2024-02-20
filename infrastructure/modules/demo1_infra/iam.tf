@@ -36,6 +36,10 @@ data "google_iam_policy" "service_account" {
     role    = "roles/iam.serviceAccountTokenCreator"
     members = [for sa in var.dataflow_invokers : "serviceAccount:${sa.email}"]
   }
+  binding {
+    members = [for sa in var.dataflow_invokers : "serviceAccount:${sa.email}"]
+    role    = "roles/iam.serviceAccountUser"
+  }
 }
 
 resource "google_service_account_iam_policy" "dataflow_inference_service_account" {
@@ -70,13 +74,4 @@ data "google_iam_policy" "storage" {
 resource "google_storage_bucket_iam_policy" "storage" {
   bucket      = google_storage_bucket.dataflow_bucket.name
   policy_data = data.google_iam_policy.storage.policy_data
-}
-
-#############################################################
-# dataflow account
-
-resource "google_service_account_iam_binding" "dataflow_batch_binding" {
-  service_account_id = google_service_account.dataflow_batch.name
-  role               = "roles/iam.serviceAccountUser"
-  members            = [for sa in var.dataflow_invokers : "serviceAccount:${sa.email}"]
 }

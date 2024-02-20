@@ -7,7 +7,7 @@ This pipeline
   - trains a custom model on the train dataset
 """
 
-import json
+
 from datetime import datetime
 from pathlib import Path
 from google.cloud import aiplatform
@@ -16,7 +16,7 @@ from google_cloud_pipeline_components.v1 import hyperparameter_tuning_job
 from google_cloud_pipeline_components.v1.hyperparameter_tuning_job import HyperparameterTuningJobRunOp
 from google_cloud_pipeline_components.types import artifact_types
 from google_cloud_pipeline_components.v1.model import ModelUploadOp
-from google_cloud_pipeline_components.v1.endpoint import EndpointCreateOp, ModelDeployOp
+from google_cloud_pipeline_components.v1.endpoint import ModelDeployOp
 from google_cloud_pipeline_components.v1.dataflow import DataflowFlexTemplateJobOp
 from google_cloud_pipeline_components.v1.wait_gcp_resources import WaitGcpResourcesOp
 
@@ -30,6 +30,11 @@ DEPLOY_IMAGE = "europe-docker.pkg.dev/vertex-ai/prediction/tf2-cpu.2-13:latest"
 PUBSUB_SINK_TOPIC = f"projects/{PROJECT}/topics/demo1-event-sink"
 PUBSUB_SOURCE_SUBSCRIPTION = f"projects/{PROJECT}/subscriptions/demo1-event-source-subscription"
 TRANSFORM_ARTIFACT_LOCATION = f"gs://{PROJECT}_dataflow_demo1/transform_artifacts/{JOB_ID}"
+ENDPOINT_ID = '2134275214815526912'
+PROJECT_ID = '738673379845'
+ENDPOINT_NAME = f"projects/{PROJECT_ID}/locations/{REGION}/endpoints/{ENDPOINT_ID}"
+ENDPOINT_URI = f"https://{REGION}-aiplatform.googleapis.com/v1/{ENDPOINT_NAME}"
+
 
 @dsl.component(base_image="python:3.10", packages_to_install=["google-cloud-aiplatform"])
 def model_dir(base_output_directory: str, best_trial: str) -> str:
@@ -80,44 +85,6 @@ def GetBestTrialOp(gcp_resources: str, study_spec_metrics: list) -> str:
         trials_list, key=lambda trial: trial.final_measurement.metrics[0].value)
 
     return study.Trial.to_json(best_trial)
-
-
-@dsl.component(
-    base_image="python:3.11-slim",
-    packages_to_install=["google-cloud-pipeline-components"],
-)
-def parse_endpoint_id(
-        endpoint: dsl.Input[artifact_types.VertexEndpoint],
-) -> str:
-    import re
-
-    try:
-        return re.findall(r"endpoints/(\d+)", endpoint.uri)[0]
-    except IndexError:
-        raise ValueError(f"no valid id in {endpoint.uri=}")
-
-'''
-@dsl.component
-def extract_endpoint_id(json_output: str) -> str:
-    """
-    Extracts the endpoint URI from the JSON output of a previous component.
-
-    Args:
-        json_output (str): The JSON string output from the previous component.
-
-    Returns:
-        str: The extracted endpoint URI.
-    """
-    # Parse the JSON string
-    output_dict = json.loads(json_output)
-
-    # Assuming the structure of the JSON and extracting the required part
-    resource_uri = output_dict['resources'][0]['resourceUri']
-    # Extract the specific part of the URI
-    extracted_uri_part = "/".join(resource_uri.split("/")[3:8])
-
-    return extracted_uri_part
-'''
 
 
 @dsl.pipeline(
@@ -240,22 +207,23 @@ def pipeline(display_name: str = "demo1",
     )
 
     # todo: {model_version} add model version to display name
-    endpoint = EndpointCreateOp(
-        display_name=f"demo1_endpoint",
-        location=REGION,
-    )
+
+    endpoint_importer = dsl.importer(
+        artifact_uri=ENDPOINT_URI,
+        artifact_class=artifact_types.VertexEndpoint,
+        metadata={
+            "resourceName": ENDPOINT_NAME
+        }
+    ).output
 
     model_deploy_op = ModelDeployOp(
         model=model_upload_op.outputs["model"],
-        endpoint=endpoint.outputs["endpoint"],
+        endpoint=endpoint_importer,
         dedicated_resources_machine_type="n1-standard-2",
         dedicated_resources_min_replica_count=1,
         dedicated_resources_max_replica_count=1,
         service_account=f"ml-demo1-predictor@{PROJECT}.iam.gserviceaccount.com",
     )
-
-    #extracted_uri_component = extract_endpoint_id(json_output=endpoint.outputs['gcp_resources'])
-    endpoint_id = parse_endpoint_id(endpoint=endpoint.outputs["endpoint"])
 
     # Launch the Dataflow Flex Template job
     dataflow_inf_op = DataflowFlexTemplateJobOp(
@@ -267,12 +235,12 @@ def pipeline(display_name: str = "demo1",
                     'pubsub_sink_topic': PUBSUB_SINK_TOPIC,
                     'pubsub_source_subscription': PUBSUB_SOURCE_SUBSCRIPTION,
                     'transform_artifact_location': TRANSFORM_ARTIFACT_LOCATION,
-                    'endpoint_id': endpoint_id},
+                    'endpoint_id': ENDPOINT_NAME},
         project=PROJECT,
         location=REGION,
         service_account_email=f"d1-dataflow-inference-runner@{PROJECT}.iam.gserviceaccount.com",
         container_spec_gcs_path=f'gs://{PROJECT}_dataflow_demo1/templates/demo1-inference.json',
-        job_name='demo1_inference',
+        job_name='demo1-inference',
         staging_location=f"gs://{PROJECT}_dataflow_demo1/inference/staging",
         subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
         temp_location=f"gs://{PROJECT}_dataflow_demo1/inference/temp",
@@ -297,7 +265,7 @@ def run_pipeline():
         display_name="demo1",
         template_path=pipeline_file_path,
         job_id=JOB_ID,
-        enable_caching=False,
+        enable_caching=True,
         pipeline_root=PIPELINE_ROOT,
     )
 

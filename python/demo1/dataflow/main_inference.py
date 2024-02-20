@@ -19,7 +19,7 @@ def main():
     parser.add_argument('--pubsub_source_subscription', required=True)
     parser.add_argument('--pubsub_sink_topic', required=True)
     parser.add_argument('--transform_artifact_location', required=True)
-    parser.add_argument('--endpoint_id', required=True)
+    parser.add_argument('--endpoint_name', required=True)
     parser.add_argument('--project_id', default="bt-int-ml-specialization")
 
     known_args, pipeline_args = parser.parse_known_args()
@@ -42,8 +42,6 @@ def main():
 
     prediction_fn = utils.get_prediction
 
-    endpoint_uri = f"projects/738673379845/locations/europe-west3/endpoints/{known_args.endpoint_id}"
-
     read_pubsub = ReadFromPubSub(subscription=known_args.pubsub_source_subscription)
     write_pubsub = WriteToPubSub(topic=known_args.pubsub_sink_topic)
 
@@ -55,7 +53,7 @@ def main():
                 | "WindowInto" >> beam.WindowInto(window.FixedWindows(1))  # TODO: why?
                 | "AddDateInfo" >> beam.Map(utils.add_date_info_fn)
                 | "Transform" >> transform_fn
-                | "SendToModelEndpoint" >> beam.Map(lambda x: prediction_fn(x, endpoint_uri))
+                | "SendToModelEndpoint" >> beam.Map(lambda x: prediction_fn(x, known_args.endpoint_name))
                 | "WriteToPubSub" >> write_pubsub
         )
 
