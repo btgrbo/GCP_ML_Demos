@@ -131,3 +131,38 @@ json_payload = {"instances": [{"dense_input": dense_input_list}]}
 
 # Convert the payload to a JSON string for serving
 json_str = json.dumps(json_payload)
+
+
+
+################
+
+from google.cloud import bigquery
+
+client = bigquery.Client()
+table_id = "bt-int-ml-specialization.demo1.taxi_trips_eval_dense_input_3"
+
+row =     {
+        "dense_input": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.2561830282211304, -1.3809715509414673, 1.2053550481796265, 0.485864520072937, -1.8299297094345093, 5.449345111846924],
+        "fare": 1
+    }
+
+rows_to_insert = [row for rows in range(1000)]
+
+errors = client.insert_rows_json(table_id, rows_to_insert)
+if errors == []:
+    print("New rows have been added.")
+else:
+    print("Encountered errors while inserting rows: {}".format(errors))
+
+
+import json
+
+# Specify the filename
+filename = './eval_data.jsonl'
+
+# Open the file in write mode
+with open(filename, 'w') as file:
+    for item in rows_to_insert:
+        # Convert dictionary to JSON string and write to file
+        json_str = json.dumps(item)
+        file.write(json_str + '\n')

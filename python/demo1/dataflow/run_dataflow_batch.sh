@@ -1,6 +1,8 @@
 #!/bin/bash
 set -o errexit -o nounset -o pipefail
 
+DF_RUN=$1
+
 PROJECT="bt-int-ml-specialization"
 REGION="europe-west3"
 
@@ -17,6 +19,7 @@ gcloud dataflow flex-template run "demo1-batch-`date +%Y%m%d-%H%M%S`" \
     --max-workers=1 \
     --num-workers=1 \
     --parameters project_id="$PROJECT" \
+    --parameters df_run="$DF_RUN" \
     --project="$PROJECT" \
     --region="$REGION" \
     --service-account-email="d1-dataflow-batch-runner@$PROJECT.iam.gserviceaccount.com" \

@@ -4,7 +4,6 @@ Transformation pipeline parameters are stored in GCS bucket.
 """
 
 import argparse
-from datetime import datetime
 
 import apache_beam as beam
 from apache_beam.io import WriteToTFRecord
@@ -46,8 +45,6 @@ def main(argv=None):
     pipeline_options = PipelineOptions(pipeline_args,
                                        project=known_args.project_id  # needs to be set explicitly...
                                        )
-
-    #run_id = f"run_{datetime.utcnow().isoformat()}"
 
     artifact_location = f"{known_args.gcs_bucket}/transform_artifacts/{known_args.df_run}"
 
