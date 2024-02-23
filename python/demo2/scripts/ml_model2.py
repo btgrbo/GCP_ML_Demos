@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
 # Loading the data frame into the environment
-df = pd.read_csv(r"C:/Users/OliverNowakbtelligen/OneDrive - b.telligent group/Desktop/GCP ML Demo/big-query_output.csv")
+df = pd.read_csv(r"C:\Users\OliverNowakbtelligen\OneDrive - b.telligent group\Desktop\Tickets\GCP ML Demos\python\demo2\test\data.csv")
 
 # Remove the ID columns before creating an ML model
 df = df.drop(['User_ID', 'Product_ID'], axis=1)
@@ -24,7 +24,8 @@ base_regressors = [
 ]
 
 # Define meta-regressor
-meta_regressor = GradientBoostingRegressor(n_estimators=50, random_state=42)
+meta_regressor = GradientBoostingRegressor()
+    #n_estimators=50, random_state=42)
 
 # Create StackingRegressor
 stacked_model = StackingRegressor(estimators=base_regressors, final_estimator=meta_regressor)

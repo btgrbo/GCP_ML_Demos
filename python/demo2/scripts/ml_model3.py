@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, r2_score
 
 # Loading the data frame into the environment
-df = pd.read_csv(r"C:/Users/OliverNowakbtelligen/OneDrive - b.telligent group/Desktop/GCP ML Demo/big-query_output.csv")
+df = pd.read_csv(r"C:\Users\OliverNowakbtelligen\OneDrive - b.telligent group\Desktop\Tickets\GCP ML Demos\python\demo2\test\data.csv")
 
 # Remove the ID columns before creating an ML model
 df = df.drop(['User_ID', 'Product_ID'], axis=1)
