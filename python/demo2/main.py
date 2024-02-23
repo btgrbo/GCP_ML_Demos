@@ -1,15 +1,21 @@
+import pickle
 from pathlib import Path
 
-import xgboost as xgb
 import pandas as pd
 from fire import Fire
+from sklearn.ensemble import RandomForestRegressor
+
+
+def save_model(model, file: str):
+    with open(file, "wb") as f:
+        pickle.dump(model, f)
 
 
 def main(
-        train_file_parquet: str,
-        eval_file_parquet: str,
-        model_file: str,
-        eval_output_file_parquet: str,
+    train_file_parquet: str,
+    eval_file_parquet: str,
+    model_file: str,
+    eval_output_file_parquet: str,
 ):
 
     model_file = Path(model_file)
@@ -20,36 +26,25 @@ def main(
 
     train = pd.read_parquet(train_file_parquet)
 
-    # Remove the ID columns before creating a ML model
-    train = train.drop(['User_ID', 'Product_ID'], axis=1)
+    # Split the transformed data into features and target
+    X_train = train.drop(columns=["Purchase"])
+    y_train = train["Purchase"]
 
-    # Splitting the daza into features and target
-    X_train = train.drop('Purchase', axis=1)
-    y_train = train['Purchase']
-
-    # Create simple XGB Model
-    model = xgb.XGBClassifier()
-
-    # Fitting defined model
+    # Create and train XGB model
+    model = RandomForestRegressor()
     model.fit(X_train, y_train)
-    model.save_model(model_file)
+    save_model(model, model_file)
     print(f"Model saved to {model_file}")
 
-    # Make predictions on test dataset
+    # Load and transform evaluation data
     eval = pd.read_parquet(eval_file_parquet)
-    eval_data = eval_data.drop(['User_ID', 'Product_ID'], axis=1)
-    yhat = model.predict(eval_data)
 
-    # Save predictions
-    eval['prediction'] = yhat
-    eval.to_parquet(eval_output_file_parquet)
+    # Make predictions on the transformed evaluation data
+    eval_predictions = model.predict(eval.drop(columns=["Purchase"]))
+    eval["Prediction"] = eval_predictions
+    eval.to_parquet(eval_output_file_parquet, index=False)
     print(f"Eval saved to {eval_output_file_parquet}")
 
-if __name__ == '__main__':
-    # run with `python demo2/main.py \
-    #   --train_file_parquet demo2/train.parquet \
-    #   --eval_file_parquet demo2/eval.parquet \
-    #   --model_file demo2/model.xgb \
-    #   --eval_output_file_parquet demo2/eval_with_predictions.parquet`
 
+if __name__ == "__main__":
     Fire(main)
