@@ -7,7 +7,6 @@ This pipeline
   - trains a custom model on the train dataset
 """
 
-
 from datetime import datetime
 from pathlib import Path
 from google.cloud import aiplatform
@@ -19,6 +18,8 @@ from google_cloud_pipeline_components.v1.model import ModelUploadOp
 from google_cloud_pipeline_components.v1.endpoint import ModelDeployOp
 from google_cloud_pipeline_components.v1.dataflow import DataflowFlexTemplateJobOp
 from google_cloud_pipeline_components.v1.wait_gcp_resources import WaitGcpResourcesOp
+from google_cloud_pipeline_components.v1.model_evaluation import ModelEvaluationRegressionOp
+from google_cloud_pipeline_components.v1.batch_predict_job import ModelBatchPredictOp
 
 now = datetime.now()
 JOB_ID = f"demo1-{now:%Y-%m-%d-%H-%M-%S}"
@@ -49,7 +50,7 @@ def model_dir(base_output_directory: str, best_trial: str) -> str:
     packages_to_install=['google-cloud-aiplatform',
                          'google-cloud-pipeline-components',
                          'protobuf'], base_image='python:3.10')
-def GetBestTrialOp(gcp_resources: str, study_spec_metrics: list) -> str:
+def get_best_trial_op(gcp_resources: str, study_spec_metrics: list) -> str:
     from google.cloud import aiplatform
     from google_cloud_pipeline_components.proto.gcp_resources_pb2 import GcpResources
     from google.protobuf.json_format import Parse
@@ -128,7 +129,7 @@ def pipeline(display_name: str = "demo1",
     ]
     args = [
         "--train_file_path",
-        #"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-02-08T17:04:29.494733-00000-of-00001.tfrecord"
+        # "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-02-08T17:04:29.494733-00000-of-00001.tfrecord"
         "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/" + JOB_ID + "-00000-of-00001.tfrecord"
     ]
 
@@ -182,7 +183,7 @@ def pipeline(display_name: str = "demo1",
 
     tuning_op.after(dataflow_wait_op)
 
-    best_trial_op = GetBestTrialOp(
+    best_trial_op = get_best_trial_op(
         gcp_resources=tuning_op.outputs["gcp_resources"], study_spec_metrics=study_spec_metrics
     )
 
@@ -206,7 +207,63 @@ def pipeline(display_name: str = "demo1",
         location=REGION,
     )
 
+    batch_prediction_op = ModelBatchPredictOp(job_display_name='batch_prediction_for_eval',
+                                              # gcp_resources: OutputPath(str),
+                                              # batchpredictionjob: Output[VertexBatchPredictionJob],
+                                              # bigquery_output_table: Output[BQTable],
+                                              # gcs_output_directory: Output[Artifact],
+                                              model=model_upload_op.outputs["model"],
+                                              # unmanaged_container_model: Input[UnmanagedContainerModel] = None,
+                                              location=REGION,
+                                              instances_format='jsonl',
+                                              predictions_format='jsonl',
+                                              gcs_source_uris=[
+                                                  'gs://bt-int-ml-specialization-ml-demo1/eval_results/prediction.results-eval_data.jsonl'],
+                                              # bigquery_source_input_uri: str = '',
+                                              instance_type='tf-record',
+                                              # key_field: str = '',
+                                              included_fields=['dense_input'],
+                                              # excluded_fields: List[str] = [],
+                                              # model_parameters: Dict[str, str] = {},
+                                              gcs_destination_output_uri_prefix='gs://bt-int-ml-specialization-ml-demo1/',
+                                              # bigquery_destination_output_uri: str = '',
+                                              machine_type='n1-standard-2',
+                                              # accelerator_type: str = '',
+                                              # accelerator_count: int = 0,
+                                              # starting_replica_count: int = 0,
+                                              max_replica_count=1,
+                                              # service_account: str = '',
+                                              # manual_batch_tuning_parameters_batch_size: int = 0,
+                                              generate_explanation=False,
+                                              # explanation_metadata: Dict[str, str] = {},
+                                              # explanation_parameters: Dict[str, str] = {},
+                                              # labels: Dict[str, str] = {},
+                                              # encryption_spec_key_name: str = '',
+                                              project=PROJECT,
+                                              )
+
     # todo: {model_version} add model version to display name
+
+    model_evaluation_op = ModelEvaluationRegressionOp(target_field_name='fare',
+                                                      model=model_upload_op.outputs["model"],
+                                                      location=REGION,
+                                                      predictions_format='jsonl',
+                                                      predictions_gcs_source=batch_prediction_op.outputs['gcs_output_directory'],
+                                                      # predictions_bigquery_source=None,
+                                                      ground_truth_format='jsonl',
+                                                      # ground_truth_gcs_source=[],
+                                                      # ground_truth_bigquery_source='',
+                                                      prediction_score_column='prediction',
+                                                      dataflow_service_account='d1-dataflow-batch-runner@bt-int-ml-specialization.iam.gserviceaccount.com',
+                                                      # dataflow_disk_size_gb=50,
+                                                      dataflow_machine_type='n1-standard-2',
+                                                      dataflow_workers_num=1,
+                                                      dataflow_max_workers_num=1,
+                                                      dataflow_subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
+                                                      dataflow_use_public_ips=False,
+                                                      # encryption_spec_key_name='',
+                                                      # force_runner_mode='',
+                                                      project=PROJECT)
 
     endpoint_importer = dsl.importer(
         artifact_uri=ENDPOINT_URI,
@@ -252,7 +309,6 @@ def pipeline(display_name: str = "demo1",
     # todo: use parent model to create different versions of model
     # todo: prio3: white paper
     # todo: prio4:metrics beim Training
-    # todo: readme file for repo
 
 
 def run_pipeline():
