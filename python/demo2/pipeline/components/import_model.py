@@ -13,7 +13,5 @@ def import_model(
     parent_uri = "/".join(model_artifact.uri.split("/")[0:-1])
     artifact.uri = parent_uri
     artifact.metadata = {
-        "containerSpec": {
-            "imageUri": "europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo2/xgboost-cpu.2-0:latest"
-        }
+        "containerSpec": {"imageUri": "europe-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-3:latest"}
     }

@@ -1,6 +1,6 @@
 from kfp import dsl
 
-components = ["scikit-learn", "xgboost"]
+components = ["scikit-learn"]
 
 
 @dsl.component(base_image="python:3.10", packages_to_install=components)
@@ -10,20 +10,19 @@ def create_pipeline(
     pipeline: dsl.Output[dsl.Model],
 ):
     pipeline.framework = "sklearn"
-    pipeline.uri = pipeline.uri.replace("/pipeline", "/model.pkl")  # needed by xgboost container
+    pipeline.uri = pipeline.uri.replace("/pipeline", "/model.pkl")  # needed by sklearn container
 
     import pickle
 
-    import xgboost
     from sklearn.pipeline import Pipeline
 
     with open(preprocessor.path, "rb") as f:
         preprocessor = pickle.load(f)
 
-    model_ = xgboost.XGBRegressor()
-    model_.load_model(model.path)
+    with open(model.path, "rb") as f:
+        model = pickle.load(f)
 
-    pipe = Pipeline([("preprocess", preprocessor), ("model", model_)])
+    pipe = Pipeline([("preprocess", preprocessor), ("model", model)])
 
     with open(pipeline.path, "wb") as f:
         pickle.dump(pipe, f)

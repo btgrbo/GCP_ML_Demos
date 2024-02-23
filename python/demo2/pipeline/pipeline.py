@@ -12,6 +12,7 @@ from pathlib import Path
 
 import components
 from google.cloud import aiplatform
+from google_cloud_pipeline_components._implementation import model as ai_model_exp
 from google_cloud_pipeline_components.v1.endpoint import EndpointCreateOp, ModelDeployOp
 from google_cloud_pipeline_components.v1.model import ModelUploadOp
 from kfp import compiler, dsl
@@ -57,15 +58,19 @@ def pipeline(display_name: str, data_dir: str, eval_split_ratio: float):
         model_artifact=predictor_pipeline_op.outputs["pipeline"],
     )
 
+    parent_model_name = "projects/bt-int-ml-specialization/locations/europe-west3/models/6679339624692711424"
+    parent_model = ai_model_exp.GetVertexModelOp(model_name=parent_model_name)
+
     model_upload_op = ModelUploadOp(
         display_name=display_name,
         unmanaged_container_model=unmanaged_model_importer.outputs["artifact"],
         project=PROJECT,
         location=REGION,
+        parent_model=parent_model.outputs["model"],
     )
 
     endpoint = EndpointCreateOp(
-        display_name=f"{display_name}_endpoint",
+        display_name=f"{display_name}_20240222_endpoint",
         location=REGION,
     )
 

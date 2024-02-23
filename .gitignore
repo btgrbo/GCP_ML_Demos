@@ -146,3 +146,10 @@ python/demo1/pipeline/pipeline.json
 
 # pycharm files
 .idea/
+
+# terraform
+infrastructure/dev/.terraform
+*.terraform.lock.hcl
+
+# kubeflow
+**/pipeline.json

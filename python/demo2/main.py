@@ -1,8 +1,14 @@
+import pickle
 from pathlib import Path
 
 import pandas as pd
-import xgboost as xgb
 from fire import Fire
+from sklearn.ensemble import RandomForestRegressor
+
+
+def save_model(model, file: str):
+    with open(file, "wb") as f:
+        pickle.dump(model, f)
 
 
 def main(
@@ -25,9 +31,9 @@ def main(
     y_train = train["Purchase"]
 
     # Create and train XGB model
-    model = xgb.XGBRegressor()
+    model = RandomForestRegressor()
     model.fit(X_train, y_train)
-    model.save_model(model_file)
+    save_model(model, model_file)
     print(f"Model saved to {model_file}")
 
     # Load and transform evaluation data
