@@ -1,0 +1,24 @@
+- code origin: code developed within partner organization or licensed code used -> Frage an Laurenz: wie ist das mit
+    kopiertem code wie zB für best_trial ops
+- Evidence must include a certification by the partner organization for either of the above code origin scenarios. In
+    addition, if licensed code Is used post-modification, the partner must certify that the code has been modified per
+    license specifications.
+- describe how you ensure that machine learning projects address the security and privacy concerns associated with
+    your machine For example, how do you ensure sensitive training data stored in Google Cloud is properly secured, do
+    you considerde-identification
+- add code snippets for data exploration and feature engineering (? nicht sicher, ob die wirklich ins paper müssen) to
+    whitepaper
+- evtl. nochmal Abgleich mit google ml best practices
+- add Paragraph machine learning model training and development
+- add Paragraph machine learning model evaluation
+- demonstration of how the served model can be used to make a prediction via an api call
+- evidence must include a demonstration that the deployed model is fully functional after an appropriate code
+    modification as might be performed by a customer
+- clean code, repo, buckets etc
+- potentially update figures
+- add rights that have manually been granted to roles in terraform
+- prepare tables for training and testing without limit#
+- export jsonl file for evaluation manually
+- train model properly
+- add description of evaluation to paper
+- distribution, device usage, and monitoring
