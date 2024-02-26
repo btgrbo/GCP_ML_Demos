@@ -15,7 +15,8 @@ IMAGE="europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo2/train:lates
 cd "$(dirname "$0")"
 
 # Build the docker image
-docker build -t "$IMAGE" .
+docker build -t "$IMAGE" ./training
+docker build -t "$IMAGE" ./prediction
 
 # Push the docker image to GCR
 docker push "$IMAGE"
