@@ -1,5 +1,6 @@
-import hypertune
 import os
+
+import hypertune
 import tensorflow as tf
 from fire import Fire
 
@@ -35,7 +36,7 @@ def preprocess(features: tf.data.TFRecordDataset) -> tuple[tf.Tensor, tf.Tensor]
     parsed_features = tf.io.parse_example(features, keys_to_features)
 
     # process label
-    label = tf.expand_dims(parsed_features['fare'], axis=-1)
+    label = tf.expand_dims(parsed_features["fare"], axis=-1)
     del parsed_features['fare']
 
     # Convert from a SparseTensor to a dense tensor
@@ -56,7 +57,7 @@ def preprocess(features: tf.data.TFRecordDataset) -> tuple[tf.Tensor, tf.Tensor]
 
 def load_raw_data(tft_record_path: str) -> tf.data.TFRecordDataset:
 
-    path_w_suffix = tft_record_path + '*.tfrecord'
+    path_w_suffix = tft_record_path + "*.tfrecord"
     file_names = tf.io.gfile.glob(path_w_suffix)
     iodataset_train = tf.data.TFRecordDataset(file_names)
 
@@ -111,11 +112,11 @@ def fit_model(model: tf.keras.models.Sequential,
               iodataset_eval_proc: tf.data.TFRecordDataset) -> tf.keras.callbacks.History:
 
     early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss',  # Metric to monitor
+        monitor="val_loss",  # Metric to monitor
         patience=3,  # Number of epochs to wait after min has been hit
-        mode='min',  # Minimizing the monitored quantity ('val_loss' in this case)
+        mode="min",  # Minimizing the monitored quantity ('val_loss' in this case)
         verbose=1,
-        restore_best_weights=True  # Restores model weights from the epoch with the minimum monitored quantity
+        restore_best_weights=True,  # Restores model weights from the epoch with the minimum monitored quantity
     )
 
     # fit model
@@ -148,10 +149,12 @@ def main(
 
     len_dataset = 4000740
 
-    history = fit_model(model=model,
-                        iodataset_train_proc=iodataset_train_proc.take(int(len_dataset*0.8)),
-                        epochs=epochs,
-                        iodataset_eval_proc=iodataset_train_proc.skip(int(len_dataset*0.8)))
+    history = fit_model(
+        model=model,
+        iodataset_train_proc=iodataset_train_proc.take(int(len_dataset * 0.8)),
+        epochs=epochs,
+        iodataset_eval_proc=iodataset_train_proc.skip(int(len_dataset * 0.8)),
+    )
 
     hp_metric = history.history['val_loss'][-1]
     hpt = hypertune.HyperTune()
