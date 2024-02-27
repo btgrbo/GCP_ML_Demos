@@ -1,8 +1,9 @@
 import os
 import pickle
-import re
+from io import BytesIO
 from typing import Any, Protocol
 
+import numpy as np
 import pandas as pd
 import uvicorn
 from fastapi import FastAPI
@@ -19,25 +20,29 @@ class Response(BaseModel):
 
 
 class Model(Protocol):
-    def predict(x: pd.DataFrame) -> list[float]: ...
+
+    def predict(self, Lx: pd.DataFrame) -> np.ndarray: ...
 
 
 def load_model(gcs_uri: str, project_id: str) -> Model:
     client = storage.Client(project=project_id)
-    pattern = r"gs://([^/]+)/(.+)"
-    bucket_, file_path = re.match(pattern, gcs_uri).groups()
-    bucket = client.get_bucket(bucket_)
-    blob = bucket.get_blob(file_path)
-    model_bytes = blob.download_as_bytes()
-    model = pickle.loads(model_bytes)
-    return model
+    tmp_model = BytesIO()
+    client.download_blob_to_file(gcs_uri, tmp_model)
+    tmp_model.seek(0)
+    return pickle.load(tmp_model)
 
 
 if __name__ == "__main__":
     app = FastAPI()
 
+    model_artifact_location = os.environ["MODEL_URI"]
+
+    print(f"{model_artifact_location=}", flush=True)
+    if not model_artifact_location:
+        raise RuntimeError("MODEL_URI is not set!")
+
     model = load_model(
-        gcs_uri=os.environ["AIP_STORAGE_URI"],
+        gcs_uri=f"{model_artifact_location}",
         project_id="bt-int-ml-specialization",
     )
 
@@ -48,6 +53,6 @@ if __name__ == "__main__":
     @app.post("/predictions", response_model=Response)
     async def predict(request: Request):
         df = pd.DataFrame.from_records(request.instances)
-        return model.predict(df)
+        return {"scores": model.predict(df).tolist()}
 
     uvicorn.run(app, host="0.0.0.0", port=8080)

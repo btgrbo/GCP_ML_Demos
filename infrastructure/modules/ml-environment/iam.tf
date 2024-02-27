@@ -1,6 +1,6 @@
 data "google_iam_policy" "storage" {
   binding {
-    role    = "roles/storage.objectAdmin"
+    role = "roles/storage.objectAdmin"
     members = concat(
       ["serviceAccount:${google_service_account.vertex_executor.email}"],
       var.admins
@@ -33,7 +33,7 @@ resource "google_service_account_iam_policy" "admin-account-iam" {
 
 data "google_iam_policy" "vertex_ai_runner_service_account" {
   binding {
-    role = "roles/iam.serviceAccountTokenCreator"
+    role    = "roles/iam.serviceAccountTokenCreator"
     members = var.admins
   }
 }
@@ -50,15 +50,15 @@ data "google_iam_policy" "registry" {
   }
   binding {
     role    = "roles/artifactregistry.writer"
-    members = [for sa in var.artifact_writers: "serviceAccount:${sa.email}"]
+    members = [for sa in var.artifact_writers : "serviceAccount:${sa.email}"]
   }
   binding {
     role    = "roles/artifactregistry.reader"
-    members = [for sa in var.artifact_readers: "serviceAccount:${sa.email}"]
+    members = [for sa in var.artifact_readers : "serviceAccount:${sa.email}"]
   }
 }
 
 resource "google_artifact_registry_repository_iam_policy" "registry" {
-  repository = google_artifact_registry_repository.ml.name
+  repository  = google_artifact_registry_repository.ml.name
   policy_data = data.google_iam_policy.registry.policy_data
 }

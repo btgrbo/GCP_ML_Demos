@@ -10,8 +10,14 @@ def import_model(
     artifact: dsl.Output[artifact_types.UnmanagedContainerModel],
 ):
 
-    parent_uri = "/".join(model_artifact.uri.split("/")[0:-1])
-    artifact.uri = parent_uri
+    artifact.uri = ""
     artifact.metadata = {
-        "containerSpec": {"imageUri": "europe-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-3:latest"}
+        "containerSpec": {
+            "imageUri": "europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo2/prediction:latest",
+            "healthRoute": "/ping",
+            "predictRoute": "/predictions",
+            "env": [{"name": "MODEL_URI", "value": model_artifact.uri}],
+        }
     }
+
+    # using artifact.uri that can be uset in container as AIP_STORAGE_URI is making trouble due to missing permissions
