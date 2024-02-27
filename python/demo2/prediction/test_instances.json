@@ -1,0 +1,16 @@
+{
+    "instances": [
+        {
+            "User_ID": "1003521",
+            "Product_ID": "P00252542",
+            "Gender": "M",
+            "Age": "26-35",
+            "Occupation": "0",
+            "City_Category": "B",
+            "Stay_In_Current_City_Years": "3",
+            "Marital_Status": "0",
+            "Product_Category_1": "8",
+            "Purchase": "123"
+        }
+    ]
+}

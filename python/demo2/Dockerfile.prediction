@@ -1,0 +1,24 @@
+FROM python:3.10-slim as builder
+
+WORKDIR /src
+
+RUN pip install --no-cache-dir poetry==1.7.1
+
+COPY poetry.lock pyproject.toml ./
+
+RUN poetry export --only prediction --without-hashes --no-interaction -o requirements.txt
+
+# --------------------------------------------------------------------------------------
+
+FROM python:3.10-slim
+
+WORKDIR /app
+
+COPY --from=builder /src/requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY prediction/main.py main.py
+
+
+CMD [ "python", "main.py" ]
