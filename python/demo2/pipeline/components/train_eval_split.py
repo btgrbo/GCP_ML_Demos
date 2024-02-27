@@ -1,6 +1,6 @@
 from kfp import dsl
 
-components = ["scikit-learn", "pyarrow", "pandas"]
+components = ["scikit-learn==1.4.1.post1", "pyarrow==15.0.0", "pandas==2.2.1"]
 
 
 @dsl.component(base_image="python:3.10", packages_to_install=components)
@@ -18,5 +18,5 @@ def train_eval_split(
 
     train, test = tts(all_data, test_size=eval_ratio)
 
-    train.to_parquet(data_train.path)
-    test.to_parquet(data_test.path)
+    train.to_parquet(data_train.path, index=False)
+    test.to_parquet(data_test.path, index=False)

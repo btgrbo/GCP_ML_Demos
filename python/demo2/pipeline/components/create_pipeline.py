@@ -1,6 +1,6 @@
 from kfp import dsl
 
-components = ["scikit-learn"]
+components = ["scikit-learn==1.4.1.post1"]
 
 
 @dsl.component(base_image="python:3.10", packages_to_install=components)

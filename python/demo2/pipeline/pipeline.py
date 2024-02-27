@@ -1,3 +1,5 @@
+# pyright: reportCallIssue=false
+
 """
 Vertex AI pipeline definition with kubeflow pipelines DSL.
 
@@ -86,7 +88,7 @@ def pipeline(display_name: str, data_dir: str, eval_split_ratio: float):
 
 def run_pipeline():
     pipeline_file_path = str(CURRENT_DIR / "pipeline.json")
-    compiler.Compiler().compile(pipeline, pipeline_file_path)
+    compiler.Compiler().compile(pipeline, pipeline_file_path)  # type: ignore
 
     now = datetime.now()
     job_id = f"demo2-{now:%Y-%m-%d-%H-%M-%S}"
@@ -96,7 +98,7 @@ def run_pipeline():
         display_name="demo2",
         template_path=pipeline_file_path,
         job_id=job_id,
-        enable_caching=True,
+        enable_caching=False,
         pipeline_root=PIPELINE_ROOT,
         parameter_values={
             "display_name": "demo2",

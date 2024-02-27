@@ -1,6 +1,6 @@
 from kfp import dsl
 
-components = ["scikit-learn", "pyarrow", "pandas"]
+components = ["scikit-learn==1.4.1.post1", "pyarrow==15.0.0", "pandas==2.2.1"]
 
 
 @dsl.component(
@@ -21,6 +21,9 @@ def transform(
 
     data = pd.read_parquet(data.path)
 
+    y = data["Purchase"]
+    data = data.drop(columns=["Purchase"])
+
     pipe = ColumnTransformer(
         [
             (
@@ -30,7 +33,7 @@ def transform(
             ),
             (
                 "one-hot",
-                OneHotEncoder(drop="first", sparse_output=False),
+                OneHotEncoder(drop="first", sparse_output=False, handle_unknown="ignore"),
                 ["Gender", "Age", "City_Category", "Stay_In_Current_City_Years"],
             ),
         ],
@@ -41,12 +44,14 @@ def transform(
     out = pipe.fit_transform(data)
     out = pd.DataFrame(data=out, columns=pipe.get_feature_names_out())
 
+    out["Purchase"] = y
+
     Path(preprocessor.path).parent.mkdir(parents=True, exist_ok=True)
     with open(preprocessor.path, "wb") as f:
         pickle.dump(pipe, f)
 
     Path(data_proc.path).parent.mkdir(parents=True, exist_ok=True)
-    out.to_parquet(data_proc.path)
+    out.to_parquet(data_proc.path, index=False)
 
 
 # if __name__ == "__main__":

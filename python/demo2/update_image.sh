@@ -18,8 +18,8 @@ IMAGE_PREDICTION="europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo2/
 cd "$(dirname "$0")"
 
 # Build the docker images
-docker build -t "$IMAGE_TRAINING" -f ./Dockerfile.training .
-docker build -t "$IMAGE_PREDICTION" -f ./Dockerfile.prediction .
+docker build --platform=linux/amd64 -t "$IMAGE_TRAINING" -f ./Dockerfile.training .
+docker build --platform=linux/amd64 -t "$IMAGE_PREDICTION" -f ./Dockerfile.prediction .
 
 # Push the docker images to GCR
 docker push "$IMAGE_TRAINING"
