@@ -16,7 +16,7 @@ class Request(BaseModel):
 
 
 class Response(BaseModel):
-    scores: list[float]
+    predictions: list[float]
 
 
 class Model(Protocol):
@@ -50,9 +50,9 @@ if __name__ == "__main__":
     async def healthy():
         return {"Healthy"}
 
-    @app.post("/predictions", response_model=Response)
-    async def predict(request: Request):
+    @app.post("/predictions")
+    async def predict(request: Request) -> Response:
         df = pd.DataFrame.from_records(request.instances)
-        return {"scores": model.predict(df).tolist()}
+        return Response(predictions=model.predict(df).tolist())
 
     uvicorn.run(app, host="0.0.0.0", port=8080)
