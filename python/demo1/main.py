@@ -7,7 +7,7 @@ from fire import Fire
 def define_model_vars() -> tuple[int, int, tf.keras.optimizers, str]:
     # define variables for model
     batch_size = 32
-    epochs = 2  # 10
+    epochs = 100
     optimizer = tf.keras.optimizers.Adam
     loss = 'mean_squared_error'
 
