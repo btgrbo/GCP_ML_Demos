@@ -93,8 +93,8 @@ def get_best_trial_op(gcp_resources: str, study_spec_metrics: list) -> str:
     description='Vertex AI demo1',
 )
 def pipeline(display_name: str = "demo1",
-             max_trial_count: int = 10,
-             parallel_trial_count: int = 1,
+             max_trial_count: int = 5,
+             parallel_trial_count: int = 5,
              base_output_directory: str = PIPELINE_ROOT,
              project: str = PROJECT,
              region: str = REGION,
@@ -161,9 +161,9 @@ def pipeline(display_name: str = "demo1",
     worker_pool_specs = [
         {
             "machine_spec": {
-                "machine_type": "n1-standard-4",
-                # "accelerator_type": "NVIDIA_TESLA_T4",
-                # "accelerator_count": 1,
+                "machine_type": "n1-standard-8",
+                "accelerator_type": "NVIDIA_TESLA_T4",
+                "accelerator_count": 1,
             },
             "replica_count": 1,
             "container_spec": {
