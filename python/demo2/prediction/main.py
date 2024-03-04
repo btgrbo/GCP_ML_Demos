@@ -21,7 +21,7 @@ class Response(BaseModel):
 
 class Model(Protocol):
 
-    def predict(self, Lx: pd.DataFrame) -> np.ndarray: ...
+    def predict(self, x: pd.DataFrame) -> np.ndarray: ...
 
 
 def load_model(gcs_uri: str, project_id: str) -> Model:

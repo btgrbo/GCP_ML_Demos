@@ -29,6 +29,7 @@ scikit-learn = "^1.4.1.post1"
 kfp = "^2.7.0"
 google-cloud-aiplatform = "^1.42.1"
 google-cloud-pipeline-components = "^2.10.0"
+matplotlib = "^3.8.3"
 
 [build-system]
 requires = ["poetry-core"]

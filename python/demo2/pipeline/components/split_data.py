@@ -4,11 +4,11 @@ components = ["scikit-learn==1.4.1.post1", "pyarrow==15.0.0", "pandas==2.2.1"]
 
 
 @dsl.component(base_image="python:3.10", packages_to_install=components)
-def train_eval_split(
+def split_data(
     data: dsl.Input[dsl.Dataset],
-    eval_ratio: float,
-    data_train: dsl.Output[dsl.Dataset],
-    data_test: dsl.Output[dsl.Dataset],
+    split_ratio: float,
+    split_a: dsl.Output[dsl.Dataset],
+    split_b: dsl.Output[dsl.Dataset],
 ):
 
     import pandas as pd
@@ -16,7 +16,7 @@ def train_eval_split(
 
     all_data = pd.read_parquet(data.path)
 
-    train, test = tts(all_data, test_size=eval_ratio)
+    a, b = tts(all_data, test_size=split_ratio)
 
-    train.to_parquet(data_train.path, index=False)
-    test.to_parquet(data_test.path, index=False)
+    a.to_parquet(split_a.path, index=False)
+    b.to_parquet(split_b.path, index=False)
