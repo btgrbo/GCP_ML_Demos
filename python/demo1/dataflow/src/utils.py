@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 
 import pytz
 import numpy as np
@@ -9,6 +9,42 @@ from apache_beam.ml import MLTransform
 from apache_beam.ml.transforms.tft import TFTOperation
 from datetime import datetime
 from google.cloud import aiplatform
+
+feature_description: dict = {
+    'fare': tf.io.FixedLenFeature([], tf.float32),
+    'trip_miles': tf.io.FixedLenFeature([], tf.float32),
+    'trip_seconds': tf.io.FixedLenFeature([], tf.float32),
+    'dropoff_longitude': tf.io.FixedLenFeature([], tf.float32),
+    'dropoff_latitude': tf.io.FixedLenFeature([], tf.float32),
+    'pickup_latitude': tf.io.FixedLenFeature([], tf.float32),
+    'pickup_longitude': tf.io.FixedLenFeature([], tf.float32),
+    'start_hour': tf.io.VarLenFeature(tf.float32),
+    'start_month': tf.io.VarLenFeature(tf.float32),
+    'start_date': tf.io.VarLenFeature(tf.float32),
+    'day_of_week': tf.io.VarLenFeature(tf.float32)
+}
+
+
+def tf_record_to_jsonl(row):
+    example = tf.io.parse_single_example(row, feature_description)
+    # Convert VarLenFeature to dense and decode bytes to string or float
+    processed_example = {key: value.numpy().tolist() if hasattr(value, 'numpy') else value for key, value in
+                         example.items()}
+
+    # Extract fare and concatenate other features into dense_input
+    dense_input = []
+    for key, value in processed_example.items():
+        if key != 'fare':
+            if isinstance(value, list):
+                dense_input.extend(value)
+            if isinstance(value, tf.SparseTensor):
+                dense_input.extend(value._numpy().tolist())
+            else:  # For single float values not in a list
+                dense_input.append(value)
+
+    jsonl_line = json.dumps({"dense_input": dense_input, "fare": processed_example['fare']})
+
+    return jsonl_line
 
 
 def row_to_tf_example(event):
@@ -98,10 +134,6 @@ def get_prediction(
 
     instances = instances.as_dict()
 
-    #project: str = '738673379845'
-    #endpoint_id: str = '2134275214815526912'
-    #location: str = "europe-west3"
-
     # Specify the order of features
     feature_order = ['start_month', 'start_date', 'day_of_week', 'start_hour', 'trip_miles', 'trip_seconds',
                      'dropoff_longitude', 'dropoff_latitude', 'pickup_longitude', 'pickup_latitude']
@@ -117,7 +149,6 @@ def get_prediction(
 
     input_dict_list = [{"dense_input": dense_input_list}]
 
-    #endpoint = aiplatform.Endpoint(endpoint_name=endpoint_id, project=project, location=location)
     endpoint = aiplatform.Endpoint(endpoint_name=endpoint_id)
     response = endpoint.predict(instances=input_dict_list)
 
