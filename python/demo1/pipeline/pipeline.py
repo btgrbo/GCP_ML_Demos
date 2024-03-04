@@ -101,12 +101,12 @@ def pipeline(display_name: str = "demo1",
              ):
     """Pipeline to train a custom model on the chicago taxi driver dataset."""
 
-    # Launch the Dataflow Flex Template job
-    dataflow_batch_op = DataflowFlexTemplateJobOp(
+    # Launch the Dataflow Flex Template job for training
+    dataflow_train_batch_op = DataflowFlexTemplateJobOp(
         project=PROJECT,
         location=REGION,
         container_spec_gcs_path=f'gs://{PROJECT}_dataflow_demo1/templates/demo1-batch.json',
-        job_name='batchpreprocess',
+        job_name='batchpreprocess-train',
         num_workers=1,
         max_workers=1,
         service_account_email=f"d1-dataflow-batch-runner@{PROJECT}.iam.gserviceaccount.com",
@@ -119,8 +119,33 @@ def pipeline(display_name: str = "demo1",
         ip_configuration='WORKER_IP_PRIVATE'
     )
 
-    dataflow_wait_op = WaitGcpResourcesOp(
-        gcp_resources=dataflow_batch_op.outputs["gcp_resources"]
+    dataflow_train_wait_op = WaitGcpResourcesOp(
+        gcp_resources=dataflow_train_batch_op.outputs["gcp_resources"]
+    )
+
+    # Launch the Dataflow Flex Template job for evaluation
+    dataflow_eval_batch_op = DataflowFlexTemplateJobOp(
+        project=PROJECT,
+        location=REGION,
+        container_spec_gcs_path=f'gs://{PROJECT}_dataflow_demo1/templates/demo1-eval.json',
+        job_name='batchpreprocess-eval',
+        num_workers=1,
+        max_workers=1,
+        service_account_email=f"d1-dataflow-batch-runner@{PROJECT}.iam.gserviceaccount.com",
+        temp_location=f"gs://{PROJECT}_dataflow_demo1/eval/temp",
+        machine_type="n1-standard-2",
+        subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
+        staging_location=f"gs://{PROJECT}_dataflow_demo1/eval/staging",
+        parameters={'project_id': PROJECT,
+                    'df_run': JOB_ID,
+                    'transform_artifact_location': TRANSFORM_ARTIFACT_LOCATION},
+        ip_configuration='WORKER_IP_PRIVATE',
+    )
+
+    dataflow_eval_batch_op.after(dataflow_train_wait_op)
+
+    dataflow_eval_wait_op = WaitGcpResourcesOp(
+        gcp_resources=dataflow_eval_batch_op.outputs["gcp_resources"]
     )
 
     command = [
@@ -181,7 +206,7 @@ def pipeline(display_name: str = "demo1",
         base_output_directory=base_output_directory,
     )
 
-    tuning_op.after(dataflow_wait_op)
+    tuning_op.after(dataflow_train_wait_op)
 
     best_trial_op = get_best_trial_op(
         gcp_resources=tuning_op.outputs["gcp_resources"], study_spec_metrics=study_spec_metrics
@@ -208,39 +233,20 @@ def pipeline(display_name: str = "demo1",
     )
 
     batch_prediction_op = ModelBatchPredictOp(job_display_name='batch_prediction_for_eval',
-                                              # gcp_resources: OutputPath(str),
-                                              # batchpredictionjob: Output[VertexBatchPredictionJob],
-                                              # bigquery_output_table: Output[BQTable],
-                                              # gcs_output_directory: Output[Artifact],
                                               model=model_upload_op.outputs["model"],
-                                              # unmanaged_container_model: Input[UnmanagedContainerModel] = None,
                                               location=REGION,
                                               instances_format='jsonl',
                                               predictions_format='jsonl',
-                                              gcs_source_uris=[
-                                                  'gs://bt-int-ml-specialization-ml-demo1/eval_results/prediction.results-eval_data.jsonl'],
-                                              # bigquery_source_input_uri: str = '',
+                                              gcs_source_uris=['gs://bt-int-ml-specialization_dataflow_demo1/jsonl_files/' + JOB_ID + '.jsonl'],
                                               instance_type='tf-record',
-                                              # key_field: str = '',
                                               included_fields=['dense_input'],
-                                              # excluded_fields: List[str] = [],
-                                              # model_parameters: Dict[str, str] = {},
                                               gcs_destination_output_uri_prefix='gs://bt-int-ml-specialization-ml-demo1/',
-                                              # bigquery_destination_output_uri: str = '',
                                               machine_type='n1-standard-2',
-                                              # accelerator_type: str = '',
-                                              # accelerator_count: int = 0,
-                                              # starting_replica_count: int = 0,
                                               max_replica_count=1,
-                                              # service_account: str = '',
-                                              # manual_batch_tuning_parameters_batch_size: int = 0,
                                               generate_explanation=False,
-                                              # explanation_metadata: Dict[str, str] = {},
-                                              # explanation_parameters: Dict[str, str] = {},
-                                              # labels: Dict[str, str] = {},
-                                              # encryption_spec_key_name: str = '',
                                               project=PROJECT,
                                               )
+    batch_prediction_op.after(dataflow_eval_wait_op)
 
     # todo: {model_version} add model version to display name
 
@@ -249,20 +255,14 @@ def pipeline(display_name: str = "demo1",
                                                       location=REGION,
                                                       predictions_format='jsonl',
                                                       predictions_gcs_source=batch_prediction_op.outputs['gcs_output_directory'],
-                                                      # predictions_bigquery_source=None,
                                                       ground_truth_format='jsonl',
-                                                      # ground_truth_gcs_source=[],
-                                                      # ground_truth_bigquery_source='',
                                                       prediction_score_column='prediction',
                                                       dataflow_service_account='d1-dataflow-batch-runner@bt-int-ml-specialization.iam.gserviceaccount.com',
-                                                      # dataflow_disk_size_gb=50,
                                                       dataflow_machine_type='n1-standard-2',
                                                       dataflow_workers_num=1,
                                                       dataflow_max_workers_num=1,
                                                       dataflow_subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
                                                       dataflow_use_public_ips=False,
-                                                      # encryption_spec_key_name='',
-                                                      # force_runner_mode='',
                                                       project=PROJECT)
 
     endpoint_importer = dsl.importer(
