@@ -1,10 +1,9 @@
 """
-applies transformation to bigquery data and stores result as TFRecord.
+applies transformation to bigquery data and stores result as JSONL.
 Transformation pipeline parameters are stored in GCS bucket.
 """
 
 import argparse
-import json
 import apache_beam as beam
 from apache_beam.io import WriteToText
 from apache_beam.io.gcp.bigquery import ReadFromBigQuery
@@ -16,7 +15,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--df_run', required=True)
     parser.add_argument('--bq_table',
-                        default='bt-int-ml-specialization.demo1.taxi_trips_eval_limited')
+                        default='bt-int-ml-specialization.demo1.taxi_trips_eval')
     parser.add_argument('--project_id', default="bt-int-ml-specialization")
     parser.add_argument('--gcs_bucket',
                         default="gs://bt-int-ml-specialization_dataflow_demo1")
@@ -31,8 +30,6 @@ def main(argv=None):
                                        )
 
     transform_fn = utils.get_inference_transform_fn(known_args.transform_artifact_location)
-
-    #tf_record_to_jsonl_fn = utils.tf_record_to_jsonl(rows)
 
     read_bq = ReadFromBigQuery(
         table=known_args.bq_table,
@@ -52,11 +49,8 @@ def main(argv=None):
                 | "AddDateInfo" >> beam.Map(utils.add_date_info_fn)
                 | "Transform" >> transform_fn
                 | "ConvertToTFExample" >> beam.Map(utils.row_to_tf_example)
-                #| "Prepare for JSON" >> beam.Map(utils.prepare_for_json)
-                #| "Convert to JSON" >> beam.Map(lambda x: json.dumps(x))
-                | "Prepare for JSON" >> beam.Map(utils.tf_record_to_jsonl)
-                #| "Write JSON" >> beam.Map(lambda x: json.dumps(x))
-                | "Write to GCS" >> write_jsonl_file,
+                | "ConvertToJSON" >> beam.Map(utils.tf_record_to_jsonl)
+                | "WriteToGCS" >> write_jsonl_file,
         )
 
 

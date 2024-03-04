@@ -93,7 +93,7 @@ def get_best_trial_op(gcp_resources: str, study_spec_metrics: list) -> str:
     description='Vertex AI demo1',
 )
 def pipeline(display_name: str = "demo1",
-             max_trial_count: int = 1,
+             max_trial_count: int = 10,
              parallel_trial_count: int = 1,
              base_output_directory: str = PIPELINE_ROOT,
              project: str = PROJECT,
@@ -154,7 +154,6 @@ def pipeline(display_name: str = "demo1",
     ]
     args = [
         "--train_file_path",
-        # "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/run_2024-02-08T17:04:29.494733-00000-of-00001.tfrecord"
         "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/" + JOB_ID + "-00000-of-00001.tfrecord"
     ]
 
