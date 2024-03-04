@@ -29,7 +29,13 @@ CURRENT_DIR = Path(__file__).parent
     name='Vertex AI demo',
     description='Vertex AI demo'
 )
-def pipeline(display_name: str, data_dir: str, eval_split_ratio: float):
+def pipeline(
+    display_name: str,
+    data_dir: str,
+    test_split_ratio: float,
+    eval_split_ratio: float,
+    hyperparameter_tuning: bool,
+):
     """Pipeline to train a custom model on the Black Friday dataset."""
 
     data = dsl.importer(
@@ -37,19 +43,28 @@ def pipeline(display_name: str, data_dir: str, eval_split_ratio: float):
         artifact_class=dsl.Dataset,
     )
 
-    preprocessing_op = components.transform(
-        data=data.outputs["artifact"]
-    )
+    train_test_op = components.split_data(
+        data=data.outputs["artifact"],
+        split_ratio=test_split_ratio,
+    ).set_display_name("train-test-split")
 
-    datasplit_op = components.train_eval_split(
+    preprocessing_op = components.transform(data=train_test_op.outputs["split_a"])
+
+    train_eval_op = components.split_data(
         data=preprocessing_op.outputs["data_proc"],
-        eval_ratio=eval_split_ratio,
-    )
+        split_ratio=eval_split_ratio,
+    ).set_display_name("train-validation-split")
 
     training_op = components.training(
-        train_file_parquet=datasplit_op.outputs["data_train"],
-        eval_file_parquet=datasplit_op.outputs["data_test"],
+        train_file_parquet=train_eval_op.outputs["split_a"],
+        eval_file_parquet=train_eval_op.outputs["split_b"],
+        hyperparameter_tuning=hyperparameter_tuning,
     )
+
+    components.get_metrics(predictions=training_op.outputs["train_output_file_parquet"]).set_display_name(
+        "train metrics"
+    )
+    components.get_metrics(predictions=training_op.outputs["eval_output_file_parquet"]).set_display_name("eval metrics")
 
     predictor_pipeline_op = components.create_pipeline(
         preprocessor=preprocessing_op.outputs["preprocessor"],
@@ -76,7 +91,7 @@ def pipeline(display_name: str, data_dir: str, eval_split_ratio: float):
         location=REGION,
     )
 
-    _ = ModelDeployOp(
+    model_deploy_op = ModelDeployOp(
         model=model_upload_op.outputs["model"],
         endpoint=endpoint.outputs["endpoint"],
         dedicated_resources_machine_type="n1-standard-2",
@@ -84,6 +99,14 @@ def pipeline(display_name: str, data_dir: str, eval_split_ratio: float):
         dedicated_resources_max_replica_count=1,
         service_account=f"ml-demo2-predictor@{PROJECT}.iam.gserviceaccount.com",
     )
+
+    evaluation_op = components.evaluate_model(
+        project_id=PROJECT,
+        data=train_test_op.outputs["split_b"],
+        endpoint=endpoint.outputs["endpoint"],
+    ).after(model_deploy_op)
+
+    components.get_metrics(predictions=evaluation_op.outputs["predictions"]).set_display_name("test metrics")
 
 
 def run_pipeline():
@@ -98,12 +121,14 @@ def run_pipeline():
         display_name="demo2",
         template_path=pipeline_file_path,
         job_id=job_id,
-        enable_caching=False,
+        enable_caching=True,
         pipeline_root=PIPELINE_ROOT,
         parameter_values={
             "display_name": "demo2",
             "data_dir": "gs://bt-int-ml-specialization-ml-demo2/training_data/train_20240207.parquet",
-            "eval_split_ratio": 0.2,
+            "test_split_ratio": 0.1,
+            "eval_split_ratio": 0.1,
+            "hyperparameter_tuning": False,
         },
     )
 

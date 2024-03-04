@@ -17,31 +17,37 @@ def transform(
 
     import pandas as pd
     from sklearn.compose import ColumnTransformer
-    from sklearn.preprocessing import OneHotEncoder
+    from sklearn.impute import SimpleImputer
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 
-    data = pd.read_parquet(data.path)
+    df = pd.read_parquet(data.path)
 
-    y = data["Purchase"]
-    data = data.drop(columns=["Purchase"])
+    y = df["Purchase"]
+    df = df.drop(columns=["Purchase"])
+
+    drop_features = ["Product_Category_3", "Product_ID", "User_ID"]
+    categorical_features = ["Age", "City_Category", "Gender", "Product_Category_1", "Product_Category_2"]
+    ordinal_features = ["Age", "Stay_In_Current_City_Years"]
+
+    categorical_pipeline = Pipeline(
+        steps=[
+            ("impute", SimpleImputer(strategy="most_frequent")),
+            ("one-hot", OneHotEncoder(drop="first", sparse_output=False, handle_unknown="ignore")),
+        ]
+    )
 
     pipe = ColumnTransformer(
         [
-            (
-                "drop_columns",
-                "drop",
-                ["User_ID", "Product_ID", "Product_Category_1", "Product_Category_2", "Product_Category_3"],
-            ),
-            (
-                "one-hot",
-                OneHotEncoder(drop="first", sparse_output=False, handle_unknown="ignore"),
-                ["Gender", "Age", "City_Category", "Stay_In_Current_City_Years"],
-            ),
+            ("drop_columns", "drop", drop_features),
+            ("categorical pipeline", categorical_pipeline, categorical_features),
+            ("ordinal_encoding", OrdinalEncoder(), ordinal_features),
         ],
         remainder="passthrough",
         verbose_feature_names_out=False,
     )
 
-    out = pipe.fit_transform(data)
+    out = pipe.fit_transform(df)
     out = pd.DataFrame(data=out, columns=pipe.get_feature_names_out())
 
     out["Purchase"] = y
@@ -72,6 +78,7 @@ def transform(
 #             "Age": [str(i) for i in range(3)],
 #             "City_Category": [str(i) for i in range(3)],
 #             "Stay_In_Current_City_Years": [str(i) for i in range(3)],
+#             "Purchase": range(3),
 #         }
 #     )
 
