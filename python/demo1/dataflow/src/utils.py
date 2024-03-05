@@ -9,15 +9,19 @@ from apache_beam.ml import MLTransform
 from apache_beam.ml.transforms.tft import TFTOperation
 from datetime import datetime
 from google.cloud import aiplatform
+from itertools import chain
 
-feature_description: dict = {
+feature_description_flt: dict = {
     'fare': tf.io.FixedLenFeature([], tf.float32),
     'trip_miles': tf.io.FixedLenFeature([], tf.float32),
     'trip_seconds': tf.io.FixedLenFeature([], tf.float32),
     'dropoff_longitude': tf.io.FixedLenFeature([], tf.float32),
     'dropoff_latitude': tf.io.FixedLenFeature([], tf.float32),
     'pickup_latitude': tf.io.FixedLenFeature([], tf.float32),
-    'pickup_longitude': tf.io.FixedLenFeature([], tf.float32),
+    'pickup_longitude': tf.io.FixedLenFeature([], tf.float32)
+}
+
+feature_description_ohe: dict = {
     'start_hour': tf.io.VarLenFeature(tf.float32),
     'start_month': tf.io.VarLenFeature(tf.float32),
     'start_date': tf.io.VarLenFeature(tf.float32),
@@ -26,25 +30,26 @@ feature_description: dict = {
 
 
 def tf_record_to_jsonl(row):
-    example = tf.io.parse_single_example(row, feature_description)
-    # Convert VarLenFeature to dense and decode bytes to string or float
-    processed_example = {key: value.numpy().tolist() if hasattr(value, 'numpy') else value for key, value in
-                         example.items()}
 
-    # Extract fare and concatenate other features into dense_input
-    dense_input = []
-    for key, value in processed_example.items():
-        if key != 'fare':
-            if isinstance(value, list):
-                dense_input.extend(value)
-            if isinstance(value, tf.SparseTensor):
-                dense_input.extend(value._numpy().tolist())
-            else:  # For single float values not in a list
-                dense_input.append(value)
-
-    jsonl_line = json.dumps({"dense_input": dense_input, "fare": processed_example['fare']})
+    dense_input = extract_ohe(row)
+    dense_input_flt, fare = extract_flt(row)
+    dense_input.extend(dense_input_flt)
+    jsonl_line = json.dumps({"dense_input": dense_input, "fare": fare})
 
     return jsonl_line
+
+
+def extract_flt(row):
+    example = tf.io.parse_single_example(row, feature_description_flt)
+    processed_example = {key: value.numpy().tolist() for key, value in example.items()}
+    fare = processed_example.pop('fare')
+
+    return list(processed_example.values()), fare
+
+
+def extract_ohe(row):
+    example = tf.io.parse_single_example(row, feature_description_ohe)
+    return list(chain.from_iterable(v.values.numpy().tolist() for v in example.values()))
 
 
 def row_to_tf_example(event):
