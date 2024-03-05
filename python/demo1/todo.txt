@@ -6,7 +6,7 @@
 - describe how you ensure that machine learning projects address the security and privacy concerns associated with
     your machine For example, how do you ensure sensitive training data stored in Google Cloud is properly secured, do
     you consider de-identification
-- add code snippets for data exploration and feature engineering (? nicht sicher, ob die wirklich ins paper müssen) to
+- add code snippets for feature engineering (? nicht sicher, ob die wirklich ins paper müssen) to
     whitepaper
 - add Paragraph machine learning model training and development
 - add Paragraph machine learning model evaluation

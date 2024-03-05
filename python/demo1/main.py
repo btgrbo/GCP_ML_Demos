@@ -60,8 +60,9 @@ def preprocess(features: tf.data.TFRecordDataset) -> tuple[tf.Tensor, tf.Tensor]
 
 def load_raw_data(tft_record_path: str) -> tf.data.TFRecordDataset:
 
-    tft_record_paths = glob.glob(tft_record_path + '*.tfrecord')
-    iodataset_train = tf.data.TFRecordDataset(tft_record_paths)
+    path_w_suffix = tft_record_path + '*.tfrecord'
+    file_names = tf.io.gfile.glob(path_w_suffix)
+    iodataset_train = tf.data.TFRecordDataset(file_names)
 
     return iodataset_train
 

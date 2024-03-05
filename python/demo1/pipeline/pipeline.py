@@ -116,7 +116,7 @@ def pipeline(display_name: str = "demo1",
         staging_location=f"gs://{PROJECT}_dataflow_demo1/batch/staging",
         parameters={'project_id': PROJECT,
                     'df_run': JOB_ID,
-                    'output_location': f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}/"},
+                    'output_location': f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}"},
         ip_configuration='WORKER_IP_PRIVATE'
     )
 
@@ -155,7 +155,7 @@ def pipeline(display_name: str = "demo1",
     ]
     args = [
         "--train_file_path",
-        f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}/"
+        f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}"
     ]
 
     # The spec of the worker pools including machine type and Docker image
