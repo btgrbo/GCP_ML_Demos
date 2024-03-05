@@ -1,6 +1,7 @@
 import hypertune
 import os
 import tensorflow as tf
+import glob
 from fire import Fire
 
 
@@ -59,7 +60,8 @@ def preprocess(features: tf.data.TFRecordDataset) -> tuple[tf.Tensor, tf.Tensor]
 
 def load_raw_data(tft_record_path: str) -> tf.data.TFRecordDataset:
 
-    iodataset_train = tf.data.TFRecordDataset(tft_record_path)
+    tft_record_paths = glob.glob(tft_record_path + '*.tfrecord')
+    iodataset_train = tf.data.TFRecordDataset(tft_record_paths)
 
     return iodataset_train
 

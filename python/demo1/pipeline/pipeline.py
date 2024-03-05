@@ -115,7 +115,8 @@ def pipeline(display_name: str = "demo1",
         subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
         staging_location=f"gs://{PROJECT}_dataflow_demo1/batch/staging",
         parameters={'project_id': PROJECT,
-                    'df_run': JOB_ID},
+                    'df_run': JOB_ID,
+                    'output_location': f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}/"},
         ip_configuration='WORKER_IP_PRIVATE'
     )
 
@@ -154,7 +155,7 @@ def pipeline(display_name: str = "demo1",
     ]
     args = [
         "--train_file_path",
-        "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/" + JOB_ID + "-00000-of-00001.tfrecord"
+        f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}/"
     ]
 
     # The spec of the worker pools including machine type and Docker image
@@ -162,8 +163,8 @@ def pipeline(display_name: str = "demo1",
         {
             "machine_spec": {
                 "machine_type": "n1-standard-8",
-                "accelerator_type": "NVIDIA_TESLA_T4",
-                "accelerator_count": 1,
+                #"accelerator_type": "NVIDIA_TESLA_T4",
+                #"accelerator_count": 1,
             },
             "replica_count": 1,
             "container_spec": {
@@ -236,7 +237,7 @@ def pipeline(display_name: str = "demo1",
                                               location=REGION,
                                               instances_format='jsonl',
                                               predictions_format='jsonl',
-                                              gcs_source_uris=['gs://bt-int-ml-specialization_dataflow_demo1/jsonl_files/' + JOB_ID + '.jsonl'],
+                                              gcs_source_uris=[f'gs://bt-int-ml-specialization_dataflow_demo1/jsonl_files/{JOB_ID}.jsonl'],
                                               instance_type='tf-record',
                                               included_fields=['dense_input'],
                                               gcs_destination_output_uri_prefix='gs://bt-int-ml-specialization-ml-demo1/',
