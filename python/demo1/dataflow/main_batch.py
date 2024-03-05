@@ -37,8 +37,7 @@ def main(argv=None):
     parser.add_argument('--project_id', default="bt-int-ml-specialization")
     parser.add_argument('--gcs_bucket',
                         default="gs://bt-int-ml-specialization_dataflow_demo1")
-    parser.add_argument('--output_location',
-                        default="gs://bt-int-ml-specialization_dataflow_demo1/TFRecords")
+    parser.add_argument('--output_location', required=True)
 
     known_args, pipeline_args = parser.parse_known_args(argv)
 
