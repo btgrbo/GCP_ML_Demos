@@ -70,11 +70,11 @@ def define_datasets(iodataset_train: tf.data.TFRecordDataset,
                     batch_size: int,
                     epochs: int) -> tf.data.TFRecordDataset:
 
-    # map preprocessing to datasets
-    iodataset_train_proc = iodataset_train.map(preprocess)
-
     # Shuffle and batch the dataset
-    iodataset_train_proc = iodataset_train_proc.shuffle(buffer_size=batch_size * 10).batch(batch_size)
+    iodataset_train_proc = iodataset_train.shuffle(buffer_size=batch_size * 10).batch(batch_size)
+
+    # map preprocessing to datasets
+    iodataset_train_proc = iodataset_train_proc.map(preprocess)
 
     # Repeat for the specified number of epochs
     iodataset_train_proc = iodataset_train_proc.repeat(epochs)
