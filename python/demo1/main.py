@@ -1,7 +1,6 @@
 import hypertune
 import os
 import tensorflow as tf
-import glob
 from fire import Fire
 
 
@@ -109,7 +108,7 @@ def compile_model(model: tf.keras.models.Sequential,
                   learning_rate: float,
                   loss: str) -> None:
     # Compile the model
-    model.compile(optimizer=optimizer(learning_rate), loss=loss)
+    model.compile(optimizer=optimizer(learning_rate), loss=loss, run_eagerly=True)
 
 
 def fit_model(model: tf.keras.models.Sequential,
@@ -142,7 +141,6 @@ def main(
         learning_rate: float,
         dropout_rate: float
 ):
-
     batch_size, epochs, optimizer, loss = define_model_vars()
     iodataset_train = load_raw_data(tft_record_path=train_file_path)
     iodataset_train_proc = define_datasets(iodataset_train=iodataset_train,
