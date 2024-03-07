@@ -7,7 +7,7 @@ from fire import Fire
 def define_model_vars() -> tuple[int, int, tf.keras.optimizers, str]:
     # define variables for model
     batch_size = 32
-    epochs = 100
+    epochs = 30
     optimizer = tf.keras.optimizers.Adam
     loss = 'mean_squared_error'
 
@@ -105,7 +105,7 @@ def compile_model(model: tf.keras.models.Sequential,
                   learning_rate: float,
                   loss: str) -> None:
     # Compile the model
-    model.compile(optimizer=optimizer(learning_rate), loss=loss, run_eagerly=True)
+    model.compile(optimizer=optimizer(learning_rate), loss=loss)
 
 
 def fit_model(model: tf.keras.models.Sequential,
@@ -120,6 +120,16 @@ def fit_model(model: tf.keras.models.Sequential,
         verbose=1,
         restore_best_weights=True  # Restores model weights from the epoch with the minimum monitored quantity
     )
+    """
+    left_ds, right_ds = tf.keras.utils.split_dataset(iodataset_train_proc, left_size=0.8)
+   
+
+    size = [i for i, _ in enumerate(iodataset_train_proc, 1)]
+    print('Size of iodataset_train_proc: ', size[-1])
+
+    size = [i for i, _ in enumerate(iodataset_eval_proc, 1)]
+    print('Size of iodataset_eval_proc: ', size[-1])
+     """
 
     # fit model
     history = model.fit(iodataset_train_proc, epochs=epochs, validation_data=iodataset_eval_proc,
@@ -148,10 +158,12 @@ def main(
                   optimizer=optimizer,
                   learning_rate=learning_rate,
                   loss=loss)
+    len_dataset = len(list(iodataset_train))
     history = fit_model(model=model,
-                        iodataset_train_proc=iodataset_train_proc.take(int(batch_size*0.8)),
+                        iodataset_train_proc=iodataset_train_proc.take(int(len_dataset*0.8)),
                         epochs=epochs,
-                        iodataset_eval_proc=iodataset_train_proc.skip(int(batch_size*0.8)))
+                        iodataset_eval_proc=iodataset_train_proc.skip(int(len_dataset*0.8)))
+    """
     hp_metric = history.history['val_loss'][-1]
     hpt = hypertune.HyperTune()
     hpt.report_hyperparameter_tuning_metric(
@@ -161,7 +173,7 @@ def main(
     )
     model_dir = os.getenv('AIP_MODEL_DIR')
     save_model(model, model_dir)
-
+    """
 
 if __name__ == '__main__':
     # run with `python demo2/main.py \
