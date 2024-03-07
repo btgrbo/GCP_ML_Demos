@@ -59,9 +59,9 @@ def preprocess(features: tf.data.TFRecordDataset) -> tuple[tf.Tensor, tf.Tensor]
 
 def load_raw_data(tft_record_path: str) -> tf.data.TFRecordDataset:
 
-    #path_w_suffix = tft_record_path + '*.tfrecord'
-    #file_names = tf.io.gfile.glob(path_w_suffix)
-    iodataset_train = tf.data.TFRecordDataset(tft_record_path)#file_names)
+    path_w_suffix = tft_record_path + '*.tfrecord'
+    file_names = tf.io.gfile.glob(path_w_suffix)
+    iodataset_train = tf.data.TFRecordDataset(file_names)
 
     return iodataset_train
 
@@ -158,7 +158,9 @@ def main(
                   optimizer=optimizer,
                   learning_rate=learning_rate,
                   loss=loss)
-    len_dataset = len(list(iodataset_train))
+
+    len_dataset = 4000740
+
     history = fit_model(model=model,
                         iodataset_train_proc=iodataset_train_proc.take(int(len_dataset*0.8)),
                         epochs=epochs,
