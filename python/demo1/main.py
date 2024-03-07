@@ -32,27 +32,27 @@ def preprocess(features: tf.data.TFRecordDataset) -> tuple[tf.Tensor, tf.Tensor]
     }
 
     # Load one example
-    parsed_features = tf.io.parse_single_example(features, keys_to_features)
+    parsed_features = tf.io.parse_example(features, keys_to_features)
 
     # process label
     label = parsed_features['fare']
-    label = tf.reshape(label, [1])
+    label = tf.reshape(label, [-1])
     del parsed_features['fare']
 
     # Convert from a SparseTensor to a dense tensor
     ohe_vars = ['start_month', 'start_date', 'day_of_week', 'start_hour']
     for ohe_var in ohe_vars:
-        parsed_features[ohe_var] = tf.sparse.to_dense(parsed_features[ohe_var])
+        parsed_features[ohe_var] = tf.reshape(tf.sparse.to_dense(parsed_features[ohe_var]), [-1])
 
     flt_vars = ['trip_miles', 'trip_seconds', 'dropoff_longitude', 'dropoff_latitude', 'pickup_longitude',
                 'pickup_latitude']
     for flt_var in flt_vars:
         # reshape and concat tensors
-        parsed_features[flt_var] = tf.reshape(parsed_features[flt_var], [1])
+        parsed_features[flt_var] = tf.reshape(parsed_features[flt_var], [-1])
 
     tensors = list(parsed_features.values())
     tensors = tf.concat(tensors, axis=-1)
-    tensors = tf.reshape(tensors, [-1,])
+    tensors = tf.reshape(tensors, [-1, 80])
 
     return tensors, label
 
@@ -71,13 +71,10 @@ def define_datasets(iodataset_train: tf.data.TFRecordDataset,
                     epochs: int) -> tf.data.TFRecordDataset:
 
     # Shuffle and batch the dataset
-    iodataset_train_proc = iodataset_train.shuffle(buffer_size=batch_size * 10).batch(batch_size)
+    iodataset_train_proc = iodataset_train.shuffle(buffer_size=batch_size * 10).batch(batch_size).repeat(epochs)
 
     # map preprocessing to datasets
     iodataset_train_proc = iodataset_train_proc.map(preprocess)
-
-    # Repeat for the specified number of epochs
-    iodataset_train_proc = iodataset_train_proc.repeat(epochs)
 
     return iodataset_train_proc
 
