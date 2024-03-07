@@ -35,24 +35,21 @@ def preprocess(features: tf.data.TFRecordDataset) -> tuple[tf.Tensor, tf.Tensor]
     parsed_features = tf.io.parse_example(features, keys_to_features)
 
     # process label
-    label = parsed_features['fare']
-    label = tf.reshape(label, [-1])
+    label = tf.expand_dims(parsed_features['fare'], axis=-1)
     del parsed_features['fare']
 
     # Convert from a SparseTensor to a dense tensor
     ohe_vars = ['start_month', 'start_date', 'day_of_week', 'start_hour']
     for ohe_var in ohe_vars:
-        parsed_features[ohe_var] = tf.reshape(tf.sparse.to_dense(parsed_features[ohe_var]), [-1])
+        parsed_features[ohe_var] = tf.sparse.to_dense(parsed_features[ohe_var])
 
     flt_vars = ['trip_miles', 'trip_seconds', 'dropoff_longitude', 'dropoff_latitude', 'pickup_longitude',
                 'pickup_latitude']
     for flt_var in flt_vars:
         # reshape and concat tensors
-        parsed_features[flt_var] = tf.reshape(parsed_features[flt_var], [-1])
+        parsed_features[flt_var] = tf.expand_dims(parsed_features[flt_var], axis=-1)
 
-    tensors = list(parsed_features.values())
-    tensors = tf.concat(tensors, axis=-1)
-    tensors = tf.reshape(tensors, [-1, 80])
+    tensors = tf.concat(list(parsed_features.values()), axis=1)
 
     return tensors, label
 
@@ -120,16 +117,6 @@ def fit_model(model: tf.keras.models.Sequential,
         verbose=1,
         restore_best_weights=True  # Restores model weights from the epoch with the minimum monitored quantity
     )
-    """
-    left_ds, right_ds = tf.keras.utils.split_dataset(iodataset_train_proc, left_size=0.8)
-   
-
-    size = [i for i, _ in enumerate(iodataset_train_proc, 1)]
-    print('Size of iodataset_train_proc: ', size[-1])
-
-    size = [i for i, _ in enumerate(iodataset_eval_proc, 1)]
-    print('Size of iodataset_eval_proc: ', size[-1])
-     """
 
     # fit model
     history = model.fit(iodataset_train_proc, epochs=epochs, validation_data=iodataset_eval_proc,
@@ -165,7 +152,7 @@ def main(
                         iodataset_train_proc=iodataset_train_proc.take(int(len_dataset*0.8)),
                         epochs=epochs,
                         iodataset_eval_proc=iodataset_train_proc.skip(int(len_dataset*0.8)))
-    """
+
     hp_metric = history.history['val_loss'][-1]
     hpt = hypertune.HyperTune()
     hpt.report_hyperparameter_tuning_metric(
@@ -175,7 +162,7 @@ def main(
     )
     model_dir = os.getenv('AIP_MODEL_DIR')
     save_model(model, model_dir)
-    """
+
 
 if __name__ == '__main__':
     # run with `python demo2/main.py \
