@@ -14,7 +14,6 @@
 - evidence must include a demonstration that the deployed model is fully functional after an appropriate code
     modification as might be performed by a customer -> Integration Test
 - clean code, repo, buckets etc.
-- potentially update figures
 - add rights that have manually been granted to roles in terraform
 - train model properly
 - distribution, device usage, and monitoring
