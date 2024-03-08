@@ -7,7 +7,7 @@ from fire import Fire
 def define_model_vars() -> tuple[int, int, tf.keras.optimizers, str]:
     # define variables for model
     batch_size = 32
-    epochs = 30
+    epochs = 7
     optimizer = tf.keras.optimizers.Adam
     loss = 'mean_squared_error'
 
@@ -112,7 +112,7 @@ def fit_model(model: tf.keras.models.Sequential,
 
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss',  # Metric to monitor
-        patience=10,  # Number of epochs to wait after min has been hit
+        patience=3,  # Number of epochs to wait after min has been hit
         mode='min',  # Minimizing the monitored quantity ('val_loss' in this case)
         verbose=1,
         restore_best_weights=True  # Restores model weights from the epoch with the minimum monitored quantity
