@@ -10,16 +10,14 @@ data "google_iam_policy" "project_iam" {
   }
   binding {
     role    = "roles/storage.objectAdmin"
-    members = var.project_admins
+    members = concat(var.project_admins,
+                     ["serviceAccount:${var.dataflow_accounts[0].email}"])
   }
   binding {
     role    = "roles/owner"
     members = var.project_admins
   }
-  #  binding {
-  #    role    = "roles/viewer"
-  #    members = [for sa in var.dataflow_accounts : "serviceAccount:${sa.email}"]
-  #  }
+
   binding {
     role    = "roles/bigquery.dataOwner"
     members = var.project_admins
@@ -44,7 +42,6 @@ data "google_iam_policy" "project_iam" {
     role = "roles/aiplatform.customCodeServiceAgent"
     members = [
       "serviceAccount:service-${var.project.number}@gcp-sa-aiplatform-cc.iam.gserviceaccount.com",
-      # "serviceAccount:service-${google_project_service_identity.aiplatform.email}",
     ]
   }
   binding {
@@ -78,7 +75,8 @@ data "google_iam_policy" "project_iam" {
   }
   binding {
     role    = "roles/dataflow.worker"
-    members = [for sa in var.dataflow_accounts : "serviceAccount:${sa.email}"]
+    members = concat([for sa in var.dataflow_accounts : "serviceAccount:${sa.email}"],)
+                     #["serviceAccount:738673379845-compute@developer.gserviceaccount.com"])
   }
   binding {
     role = "roles/dataflow.admin"
@@ -88,7 +86,13 @@ data "google_iam_policy" "project_iam" {
   }
   binding {
     role    = "roles/bigquery.jobUser"
-    members = ["serviceAccount:${var.dataflow_accounts[0].email}"]
+    members = ["serviceAccount:${var.dataflow_accounts[0].email}",
+               "serviceAccount:${var.vertex_executors[0].email}"]
+  }
+  binding {
+    role    = "roles/bigquery.dataEditor"
+    members = [#"serviceAccount:738673379845-compute@developer.gserviceaccount.com",
+               "serviceAccount:${var.vertex_executors[0].email}"]
   }
 }
 
