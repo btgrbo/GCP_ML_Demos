@@ -101,6 +101,7 @@ def pipeline(display_name: str = "demo1",
              ):
     """Pipeline to train a custom model on the chicago taxi driver dataset."""
 
+
     # Launch the Dataflow Flex Template job for training
     dataflow_train_batch_op = DataflowFlexTemplateJobOp(
         project=PROJECT,
@@ -149,20 +150,23 @@ def pipeline(display_name: str = "demo1",
         gcp_resources=dataflow_eval_batch_op.outputs["gcp_resources"]
     )
 
+
     command = [
         "python",
         "/app/main.py"
     ]
     args = [
         "--train_file_path",
-        f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}"
+        f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}/"
+        #"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/demo1-2024-03-03-19-42-36-00000-of-00001.tfrecord" small file
+        #"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/demo1-2024-03-07-23-18-24"
     ]
 
     # The spec of the worker pools including machine type and Docker image
     worker_pool_specs = [
         {
             "machine_spec": {
-                "machine_type": "n1-standard-8",
+                "machine_type": "n1-standard-16",
                 #"accelerator_type": "NVIDIA_TESLA_T4",
                 #"accelerator_count": 1,
             },
@@ -205,6 +209,7 @@ def pipeline(display_name: str = "demo1",
         parallel_trial_count=parallel_trial_count,
         base_output_directory=base_output_directory,
     )
+
 
     tuning_op.after(dataflow_train_wait_op)
 

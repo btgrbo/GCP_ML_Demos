@@ -293,7 +293,7 @@ def main(
                   learning_rate=learning_rate,
                   loss=loss)
 
-    len_dataset = 4000740
+    len_dataset = len(list(iodataset_train_proc))
 
     history = fit_model(model=model,
                         iodataset_train_proc=iodataset_train_proc.take(int(len_dataset*0.8)),
@@ -301,6 +301,7 @@ def main(
                         iodataset_eval_proc=iodataset_train_proc.skip(int(len_dataset*0.8)))
 
     hp_metric = history.history['val_loss'][-1]
+
     hpt = hypertune.HyperTune()
     hpt.report_hyperparameter_tuning_metric(
         hyperparameter_metric_tag='loss',
