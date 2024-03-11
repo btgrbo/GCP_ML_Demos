@@ -23,6 +23,6 @@ def training(
             model.path,
             eval_output_file_parquet.path,
             train_output_file_parquet.path,
-            str(hyperparameter_tuning),
+            hyperparameter_tuning,
         ],
     )
