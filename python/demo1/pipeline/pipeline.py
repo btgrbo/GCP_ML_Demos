@@ -97,7 +97,6 @@ def pipeline(display_name: str = "demo1",
              ):
     """Pipeline to train a custom model on the chicago taxi driver dataset."""
 
-
     # Launch the Dataflow Flex Template job for training
     dataflow_train_batch_op = DataflowFlexTemplateJobOp(
         project=PROJECT,
@@ -113,7 +112,7 @@ def pipeline(display_name: str = "demo1",
         staging_location=f"gs://{PROJECT}_dataflow_demo1/batch/staging",
         parameters={'project_id': PROJECT,
                     'df_run': JOB_ID,
-                    'output_location': f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}"},
+                    'output_location': f"gs://{PROJECT}_dataflow_demo1/TFRecords/{JOB_ID}"},
         ip_configuration='WORKER_IP_PRIVATE'
     )
 
@@ -146,14 +145,13 @@ def pipeline(display_name: str = "demo1",
         gcp_resources=dataflow_eval_batch_op.outputs["gcp_resources"]
     )
 
-
     command = [
         "python",
         "/app/main.py"
     ]
     args = [
         "--train_file_path",
-        f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}/"
+        f"gs://{PROJECT}_dataflow_demo1/TFRecords/{JOB_ID}/"
     ]
 
     # The spec of the worker pools including machine type and Docker image
@@ -164,7 +162,7 @@ def pipeline(display_name: str = "demo1",
             },
             "replica_count": 1,
             "container_spec": {
-                "image_uri": "europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:latest",
+                "image_uri": f"europe-west3-docker.pkg.dev/{PROJECT}/ml-demo1/train:latest",
                 "command": command,
                 "args": args},
         }
@@ -202,7 +200,6 @@ def pipeline(display_name: str = "demo1",
         base_output_directory=base_output_directory,
     )
 
-
     tuning_op.after(dataflow_train_wait_op)
 
     best_trial_op = get_best_trial_op(
@@ -234,10 +231,10 @@ def pipeline(display_name: str = "demo1",
                                               location=REGION,
                                               instances_format='jsonl',
                                               predictions_format='jsonl',
-                                              gcs_source_uris=[f'gs://bt-int-ml-specialization_dataflow_demo1/jsonl_files/{JOB_ID}.jsonl'],
+                                              gcs_source_uris=[f"gs://{PROJECT}_dataflow_demo1/jsonl_files/{JOB_ID}.jsonl"],
                                               instance_type='tf-record',
                                               included_fields=['dense_input'],
-                                              gcs_destination_output_uri_prefix='gs://bt-int-ml-specialization-ml-demo1/',
+                                              gcs_destination_output_uri_prefix=f"gs://{PROJECT}-ml-demo1/",
                                               machine_type='n1-standard-2',
                                               max_replica_count=1,
                                               generate_explanation=False,
@@ -252,7 +249,7 @@ def pipeline(display_name: str = "demo1",
                                                       predictions_gcs_source=batch_prediction_op.outputs['gcs_output_directory'],
                                                       ground_truth_format='jsonl',
                                                       prediction_score_column='prediction',
-                                                      dataflow_service_account='d1-dataflow-batch-runner@bt-int-ml-specialization.iam.gserviceaccount.com',
+                                                      dataflow_service_account=f"d1-dataflow-batch-runner@{PROJECT}.iam.gserviceaccount.com",
                                                       dataflow_machine_type='n1-standard-2',
                                                       dataflow_workers_num=1,
                                                       dataflow_max_workers_num=1,
