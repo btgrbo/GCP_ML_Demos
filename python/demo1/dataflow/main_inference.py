@@ -50,7 +50,7 @@ def main():
                 pipeline
                 | "ReadFromPubSub" >> read_pubsub
                 | "DecodeJSON" >> beam.Map(lambda x: json.loads(x.decode()))
-                | "WindowInto" >> beam.WindowInto(window.FixedWindows(1))  # TODO: why?
+                | "WindowInto" >> beam.WindowInto(window.FixedWindows(1))
                 | "AddDateInfo" >> beam.Map(utils.add_date_info_fn)
                 | "Transform" >> transform_fn
                 | "SendToModelEndpoint" >> beam.Map(lambda x: prediction_fn(x, known_args.endpoint_name))

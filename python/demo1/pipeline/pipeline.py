@@ -1,10 +1,6 @@
 """
 Vertex AI pipeline definition with kubeflow pipelines DSL.
 
-This pipeline
-  - loads an example dataset (wine from sklearn)
-  - splits the dataset into train, validate and test
-  - trains a custom model on the train dataset
 """
 
 from datetime import datetime
@@ -158,8 +154,6 @@ def pipeline(display_name: str = "demo1",
     args = [
         "--train_file_path",
         f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}/"
-        #"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/demo1-2024-03-03-19-42-36-00000-of-00001.tfrecord" small file
-        #"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/demo1-2024-03-07-23-18-24"
     ]
 
     # The spec of the worker pools including machine type and Docker image
@@ -167,8 +161,6 @@ def pipeline(display_name: str = "demo1",
         {
             "machine_spec": {
                 "machine_type": "n1-standard-16",
-                #"accelerator_type": "NVIDIA_TESLA_T4",
-                #"accelerator_count": 1,
             },
             "replica_count": 1,
             "container_spec": {
@@ -253,8 +245,6 @@ def pipeline(display_name: str = "demo1",
                                               )
     batch_prediction_op.after(dataflow_eval_wait_op)
 
-    # todo: {model_version} add model version to display name
-
     model_evaluation_op = ModelEvaluationRegressionOp(target_field_name='fare',
                                                       model=model_upload_op.outputs["model"],
                                                       location=REGION,
@@ -310,10 +300,6 @@ def pipeline(display_name: str = "demo1",
     )
 
     dataflow_inf_op.after(model_deploy_op)
-
-    # todo: use parent model to create different versions of model
-    # todo: prio3: white paper
-    # todo: prio4:metrics beim Training
 
 
 def run_pipeline():
