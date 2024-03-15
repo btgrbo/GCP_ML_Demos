@@ -18,7 +18,7 @@ CURRENT_DIR = Path(__file__).parent
 
 @dsl.pipeline(name="Vertex AI demo", description="Vertex AI demo")
 def pipeline(endpoint_id: str, model_name: str, model_version: int):
-    """Pipeline deploy a new X-Ray model version"""
+    """Pipeline deploy a new MRI tumor detection model version"""
 
     endpoint_name = f"projects/{PROJECT}/locations/{REGION}/endpoints/{endpoint_id}"
     endpoint_uri = f"https://{REGION}-aiplatform.googleapis.com/v1/{endpoint_name}"
