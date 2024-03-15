@@ -69,19 +69,8 @@ C:.
 
 ## Prerequisites
 
-In order to work with this project the following software is required:
-- git
-- terraform
-- Docker
-- Python
-
-## Usage
-
-Before interacting with the GCP from your local environment make sure that you are authenticated:
-```bash
-gcloud auth login
-gloud auth application-default login
-```
+### Dependency management
+In order to add new dependencies `pip-compile` is needed.
 
 ### Model Training and Deployment
 To start a model training run and deploy the model for online serving trigger the kubeflow pipeline in 
@@ -95,41 +84,17 @@ pipenv shell
 ```
 2. Start the kubeflow pipeline:
 ```bash
-python -m pipeline.py
+python pipeline/pipeline.py
 ```
 
-### Changing the Model
+### Deployments
 
-In order to alter the model, implement changes in the python/demo1/main.py. Committing these changes to the main branch
-of the repo will trigger a cloudbuild run which rebuilds the image and pushes it to the GCP container registry.
+Committing changes to the main branch of the repo will trigger a cloudbuild run that rebuilds all docker images and pushes them to the GCP artifact registry.
 
-### Changing the Preprocessing Pipeline
+The training image can also be uploaded manually. This is only for debugging purposes. To do so run `bash update_image.sh`.
 
-In order to alter the preprocessing pipeline for either batch or inference, implement these changes in main_batch.py or
-main_inference.py. Build the new docker images and push them to the artifact registry
+Dataflow flex templates must be set up once. This step is currently executed manually. To create the templates run
 
 ```bash
-docker build -f Dockerfile_inf -t europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/dataflow_batch:latest .
-docker push europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/dataflow_batch:latest
-```
-or
-```bash
-docker build -f Dockerfile_inf -t europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/dataflow_inference:latest .
-docker push europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/dataflow_inference:latest
-```
-
-To test the batch preprocessing pipeline following changes, run:
-```bash
-./run_dataflow_batch.sh "YOUR_DATAFLOW_RUN_ID"
-```
-This will preprocess data for training from the corresponding bigquery table and export the tfiles as tf.records to the
-cloud bucket. Additionally, a transform artifact will be saved.
-
-To test the inference preprocessing pipeline following changes, run:
-```bash
- ./run_dataflow_inf.sh "PATH_TO_TRANSFORM_ARTIFACT_LOCATION"
-```
-Once the dataflow job is running you can publish a message to pubsub by running:
-```bash
- ./test_dataflow.sh
+bash dataflow/create_dataflow_templates.sh
 ```
