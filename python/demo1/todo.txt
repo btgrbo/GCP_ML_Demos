@@ -13,3 +13,8 @@
     modification as might be performed by a customer -> Integration Test
 - clean code, repo, buckets etc.
 - distribution, device usage, and monitoring
+- kubeflow pl: add model version to display name
+- kubeflow pl: add metrics beim Training
+- main inference.py: | "WindowInto" >> beam.WindowInto(window.FixedWindows(1))  # TODO: why?
+- Um das Model zu entwickeln habe ich mit 1 Mio records early stopping 10 bei 100 Epochen genommen wohingegen das finale
+  Model in Vertex AI mit 7 Epochen und early stopping nach 3 Epochen

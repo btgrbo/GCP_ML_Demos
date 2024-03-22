@@ -144,6 +144,9 @@ cython_debug/
 # scripts
 /python/demo1/scripts/
 
+# documents
+documents/
+
 # ignore pipeline file
 python/demo1/pipeline/pipeline.json
 
