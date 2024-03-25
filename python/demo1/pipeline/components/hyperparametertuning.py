@@ -21,9 +21,13 @@ def get_hyperparametertuning_op(
             },
             "replica_count": 1,
             "container_spec": {
-                "image_uri": "europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:latest",
+                "image_uri": "europe-west3-docker.pkg.dev/bt-int-ml-specialization/ml-demo1/train:tensorboard",
                 "command": ["python", "/app/main.py"],
-                "args": ["--train_file_path", f"gs://{project_id}_demo1/TFRecords/{job_id}/"],
+                # "args": ["--train_file_path", f"gs://{project_id}_dataflow_demo1/TFRecords/{job_id}/"],
+                "args": [
+                    "--train_file_path",
+                    "bt-int-ml-specialization_dataflow_demo1/TFRecords/demo1-2024-03-22-10-48-08",
+                ],
             },
         }
     ]
