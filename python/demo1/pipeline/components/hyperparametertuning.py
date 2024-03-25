@@ -26,7 +26,7 @@ def get_hyperparametertuning_op(
                 # "args": ["--train_file_path", f"gs://{project_id}_dataflow_demo1/TFRecords/{job_id}/"],
                 "args": [
                     "--train_file_path",
-                    "bt-int-ml-specialization_dataflow_demo1/TFRecords/demo1-2024-03-22-10-48-08",
+                    "gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/demo1-2024-03-14-14-11-42/",
                 ],
             },
         }
