@@ -9,7 +9,8 @@
             "City_Category": "B",
             "Stay_In_Current_City_Years": "3",
             "Marital_Status": "0",
-            "Product_Category_1": "8"
+            "Product_Category_1": "8",
+            "Product_Category_2": "2"
         },
         {
             "User_ID": "1003521",
@@ -20,7 +21,8 @@
             "City_Category": "B",
             "Stay_In_Current_City_Years": "3",
             "Marital_Status": "0",
-            "Product_Category_1": "8"
+            "Product_Category_1": "8",
+            "Product_Category_2": "2"
         }
     ]
 }
