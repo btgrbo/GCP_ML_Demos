@@ -1,5 +1,6 @@
-import hypertune
 import os
+
+import hypertune
 import tensorflow as tf
 from fire import Fire
 
@@ -105,10 +106,13 @@ def compile_model(model: tf.keras.models.Sequential,
     model.compile(optimizer=optimizer(learning_rate), loss=loss)
 
 
-def fit_model(model: tf.keras.models.Sequential,
-              iodataset_train_proc: tf.data.TFRecordDataset,
-              epochs: int,
-              iodataset_eval_proc: tf.data.TFRecordDataset) -> tf.keras.callbacks.History:
+def fit_model(
+    model: tf.keras.models.Sequential,
+    iodataset_train_proc: tf.data.TFRecordDataset,
+    epochs: int,
+    tensorboard_staging_dir: str,
+    iodataset_eval_proc: tf.data.TFRecordDataset,
+) -> tf.keras.callbacks.History:
 
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss',  # Metric to monitor
@@ -118,9 +122,15 @@ def fit_model(model: tf.keras.models.Sequential,
         restore_best_weights=True  # Restores model weights from the epoch with the minimum monitored quantity
     )
 
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_staging_dir, histogram_freq=1)
+
     # fit model
-    history = model.fit(iodataset_train_proc, epochs=epochs, validation_data=iodataset_eval_proc,
-                        callbacks=early_stopping)
+    history = model.fit(
+        iodataset_train_proc,
+        epochs=epochs,
+        validation_data=iodataset_eval_proc,
+        callbacks=[early_stopping, tensorboard_callback],
+    )
 
     return history
 
@@ -130,11 +140,7 @@ def save_model(model: tf.keras.models.Sequential, model_file: str) -> None:
     print(f"Model saved to {model_file}")
 
 
-def main(
-        train_file_path: str,
-        learning_rate: float,
-        dropout_rate: float
-):
+def main(train_file_path: str, learning_rate: float, dropout_rate: float):
     batch_size, epochs, optimizer, loss = define_model_vars()
     iodataset_train = load_raw_data(tft_record_path=train_file_path)
     iodataset_train_proc = define_datasets(iodataset_train=iodataset_train,
@@ -148,10 +154,13 @@ def main(
 
     len_dataset = len(list(iodataset_train_proc))
 
-    history = fit_model(model=model,
-                        iodataset_train_proc=iodataset_train_proc.take(int(len_dataset*0.8)),
-                        epochs=epochs,
-                        iodataset_eval_proc=iodataset_train_proc.skip(int(len_dataset*0.8)))
+    history = fit_model(
+        model=model,
+        iodataset_train_proc=iodataset_train_proc.take(int(len_dataset * 0.8)),
+        epochs=epochs,
+        tensorboard_staging_dir=os.environ["AIP_TENSORBOARD_LOG_DIR"],
+        iodataset_eval_proc=iodataset_train_proc.skip(int(len_dataset * 0.8)),
+    )
 
     hp_metric = history.history['val_loss'][-1]
 
@@ -161,7 +170,7 @@ def main(
         metric_value=hp_metric,
         global_step=epochs
     )
-    model_dir = os.getenv('AIP_MODEL_DIR')
+    model_dir = os.environ["AIP_MODEL_DIR"]
     save_model(model, model_dir)
 
 

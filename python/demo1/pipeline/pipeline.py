@@ -1,3 +1,5 @@
+# pyright: reportCallIssue=false
+
 """
 Vertex AI pipeline definition with kubeflow pipelines DSL.
 
@@ -5,306 +7,204 @@ Vertex AI pipeline definition with kubeflow pipelines DSL.
 
 from datetime import datetime
 from pathlib import Path
+
+import components
 from google.cloud import aiplatform
-from kfp import dsl, compiler
-from google_cloud_pipeline_components.v1 import hyperparameter_tuning_job
-from google_cloud_pipeline_components.v1.hyperparameter_tuning_job import HyperparameterTuningJobRunOp
 from google_cloud_pipeline_components.types import artifact_types
-from google_cloud_pipeline_components.v1.model import ModelUploadOp
-from google_cloud_pipeline_components.v1.endpoint import ModelDeployOp
-from google_cloud_pipeline_components.v1.dataflow import DataflowFlexTemplateJobOp
-from google_cloud_pipeline_components.v1.wait_gcp_resources import WaitGcpResourcesOp
-from google_cloud_pipeline_components.v1.model_evaluation import ModelEvaluationRegressionOp
 from google_cloud_pipeline_components.v1.batch_predict_job import ModelBatchPredictOp
+from google_cloud_pipeline_components.v1.dataflow import DataflowFlexTemplateJobOp
+from google_cloud_pipeline_components.v1.endpoint import ModelDeployOp
+from google_cloud_pipeline_components.v1.model import ModelUploadOp
+from google_cloud_pipeline_components.v1.model_evaluation import (
+    ModelEvaluationRegressionOp,
+)
+from google_cloud_pipeline_components.v1.wait_gcp_resources import WaitGcpResourcesOp
+from kfp import compiler, dsl
 
 now = datetime.now()
-JOB_ID = f"demo1-{now:%Y-%m-%d-%H-%M-%S}"
-PROJECT = "bt-int-ml-specialization"
+PROJECT_ID = "bt-int-ml-specialization"
+PROJECT_NR = "738673379845"
 REGION = "europe-west3"
-PIPELINE_ROOT = f"gs://{PROJECT}-ml-demo1"
 CURRENT_DIR = Path(__file__).parent
+
 DEPLOY_IMAGE = "europe-docker.pkg.dev/vertex-ai/prediction/tf2-cpu.2-13:latest"
-PUBSUB_SINK_TOPIC = f"projects/{PROJECT}/topics/demo1-event-sink"
-PUBSUB_SOURCE_SUBSCRIPTION = f"projects/{PROJECT}/subscriptions/demo1-event-source-subscription"
-TRANSFORM_ARTIFACT_LOCATION = f"gs://{PROJECT}_dataflow_demo1/transform_artifacts/{JOB_ID}"
 ENDPOINT_ID = '2134275214815526912'
-PROJECT_ID = '738673379845'
-ENDPOINT_NAME = f"projects/{PROJECT_ID}/locations/{REGION}/endpoints/{ENDPOINT_ID}"
+ENDPOINT_NAME = f"projects/{PROJECT_NR}/locations/{REGION}/endpoints/{ENDPOINT_ID}"
 ENDPOINT_URI = f"https://{REGION}-aiplatform.googleapis.com/v1/{ENDPOINT_NAME}"
-
-
-@dsl.component(base_image="python:3.10", packages_to_install=["google-cloud-aiplatform"])
-def model_dir(base_output_directory: str, best_trial: str) -> str:
-    from google.cloud.aiplatform_v1.types import study
-
-    trial_proto = study.Trial.from_json(best_trial)
-    model_id = trial_proto.id
-    return f"{base_output_directory}/{model_id}/model"
-
-
-@dsl.component(
-    packages_to_install=['google-cloud-aiplatform',
-                         'google-cloud-pipeline-components',
-                         'protobuf'], base_image='python:3.10')
-def get_best_trial_op(gcp_resources: str, study_spec_metrics: list) -> str:
-    from google.cloud import aiplatform
-    from google_cloud_pipeline_components.proto.gcp_resources_pb2 import GcpResources
-    from google.protobuf.json_format import Parse
-    from google.cloud.aiplatform_v1.types import study
-
-    api_endpoint_suffix = '-aiplatform.googleapis.com'
-    gcp_resources_proto = Parse(gcp_resources, GcpResources())
-    gcp_resources_split = gcp_resources_proto.resources[0].resource_uri.partition(
-        'projects')
-    resource_name = gcp_resources_split[1] + gcp_resources_split[2]
-    prefix_str = gcp_resources_split[0]
-    prefix_str = prefix_str[:prefix_str.find(api_endpoint_suffix)]
-    api_endpoint = prefix_str[(prefix_str.rfind('//') + 2):] + api_endpoint_suffix
-
-    client_options = {'api_endpoint': api_endpoint}
-    job_client = aiplatform.gapic.JobServiceClient(client_options=client_options)
-    response = job_client.get_hyperparameter_tuning_job(name=resource_name)
-
-    trials = [study.Trial.to_json(trial) for trial in response.trials]
-
-    if len(study_spec_metrics) > 1:
-        raise RuntimeError('Unable to determine best parameters for multi-objective'
-                           ' hyperparameter tuning.')
-    trials_list = [study.Trial.from_json(trial) for trial in trials]
-    best_trial = None
-    goal = study_spec_metrics[0]['goal']
-    best_fn = None
-    if goal == study.StudySpec.MetricSpec.GoalType.MAXIMIZE:
-        best_fn = max
-    elif goal == study.StudySpec.MetricSpec.GoalType.MINIMIZE:
-        best_fn = min
-    best_trial = best_fn(
-        trials_list, key=lambda trial: trial.final_measurement.metrics[0].value)
-
-    return study.Trial.to_json(best_trial)
+JOB_ID = f"demo1-{now:%Y-%m-%d-%H-%M-%S}"
+PIPELINE_ROOT = f"gs://{PROJECT_ID}-ml-demo1"
+PUBSUB_SINK_TOPIC = f"projects/{PROJECT_ID}/topics/demo1-event-sink"
+PUBSUB_SOURCE_SUBSCRIPTION = f"projects/{PROJECT_ID}/subscriptions/demo1-event-source-subscription"
+SUBNET = f"https://www.googleapis.com/compute/v1/projects/{PROJECT_ID}/regions/{REGION}/subnetworks/default-{REGION}"
+TRANSFORM_ARTIFACT_LOCATION = f"gs://{PROJECT_ID}_dataflow_demo1/transform_artifacts/{JOB_ID}"
 
 
 @dsl.pipeline(
     name='Vertex AI demo1',
     description='Vertex AI demo1',
 )
-def pipeline(display_name: str = "demo1",
-             max_trial_count: int = 5,
-             parallel_trial_count: int = 5,
-             base_output_directory: str = PIPELINE_ROOT,
-             project: str = PROJECT,
-             region: str = REGION,
-             ):
+def pipeline(
+    display_name: str = "demo1",
+    max_trial_count: int = 5,
+    parallel_trial_count: int = 5,
+    base_output_directory: str = PIPELINE_ROOT,
+):
     """Pipeline to train a custom model on the chicago taxi driver dataset."""
 
-    # Launch the Dataflow Flex Template job for training
-    dataflow_train_batch_op = DataflowFlexTemplateJobOp(
-        project=PROJECT,
-        location=REGION,
-        container_spec_gcs_path=f'gs://{PROJECT}_dataflow_demo1/templates/demo1-batch.json',
-        job_name='batchpreprocess-train',
-        num_workers=1,
-        max_workers=1,
-        service_account_email=f"d1-dataflow-batch-runner@{PROJECT}.iam.gserviceaccount.com",
-        temp_location=f"gs://{PROJECT}_dataflow_demo1/batch/temp",
-        machine_type="n1-standard-2",
-        subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
-        staging_location=f"gs://{PROJECT}_dataflow_demo1/batch/staging",
-        parameters={'project_id': PROJECT,
-                    'df_run': JOB_ID,
-                    'output_location': f"gs://{PROJECT}_dataflow_demo1/TFRecords/{JOB_ID}"},
-        ip_configuration='WORKER_IP_PRIVATE'
-    )
+    # dataflow_train_batch_op = DataflowFlexTemplateJobOp(
+    #     project=PROJECT_ID,
+    #     location=REGION,
+    #     container_spec_gcs_path=f"gs://{PROJECT_ID}_dataflow_demo1/templates/demo1-batch.json",
+    #     job_name="batchpreprocess-train",
+    #     num_workers=1,
+    #     max_workers=1,
+    #     service_account_email=f"d1-dataflow-batch-runner@{PROJECT_ID}.iam.gserviceaccount.com",
+    #     temp_location=f"gs://{PROJECT_ID}_dataflow_demo1/batch/temp",
+    #     machine_type="n1-standard-2",
+    #     subnetwork=SUBNET,
+    #     staging_location=f"gs://{PROJECT_ID}_dataflow_demo1/batch/staging",
+    #     parameters={
+    #         "project_id": PROJECT_ID,
+    #         "df_run": JOB_ID,
+    #         "output_location": f"gs://bt-int-ml-specialization_dataflow_demo1/TFRecords/{JOB_ID}",
+    #     },
+    #     ip_configuration="WORKER_IP_PRIVATE",
+    # )
 
-    dataflow_train_wait_op = WaitGcpResourcesOp(
-        gcp_resources=dataflow_train_batch_op.outputs["gcp_resources"]
-    )
+    # dataflow_train_wait_op = WaitGcpResourcesOp(gcp_resources=dataflow_train_batch_op.outputs["gcp_resources"])
 
-    # Launch the Dataflow Flex Template job for evaluation
-    dataflow_eval_batch_op = DataflowFlexTemplateJobOp(
-        project=PROJECT,
-        location=REGION,
-        container_spec_gcs_path=f'gs://{PROJECT}_dataflow_demo1/templates/demo1-eval.json',
-        job_name='batchpreprocess-eval',
-        num_workers=1,
-        max_workers=1,
-        service_account_email=f"d1-dataflow-batch-runner@{PROJECT}.iam.gserviceaccount.com",
-        temp_location=f"gs://{PROJECT}_dataflow_demo1/eval/temp",
-        machine_type="n1-standard-2",
-        subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
-        staging_location=f"gs://{PROJECT}_dataflow_demo1/eval/staging",
-        parameters={'project_id': PROJECT,
-                    'df_run': JOB_ID,
-                    'transform_artifact_location': TRANSFORM_ARTIFACT_LOCATION},
-        ip_configuration='WORKER_IP_PRIVATE',
-    )
+    # dataflow_eval_batch_op = DataflowFlexTemplateJobOp(
+    #     project=PROJECT_ID,
+    #     location=REGION,
+    #     container_spec_gcs_path=f"gs://{PROJECT_ID}_dataflow_demo1/templates/demo1-eval.json",
+    #     job_name="batchpreprocess-eval",
+    #     num_workers=1,
+    #     max_workers=1,
+    #     service_account_email=f"d1-dataflow-batch-runner@{PROJECT_ID}.iam.gserviceaccount.com",
+    #     temp_location=f"gs://{PROJECT_ID}_dataflow_demo1/eval/temp",
+    #     machine_type="n1-standard-2",
+    #     subnetwork=SUBNET,
+    #     staging_location=f"gs://{PROJECT_ID}_dataflow_demo1/eval/staging",
+    #     parameters={
+    #         "project_id": PROJECT_ID,
+    #         "df_run": JOB_ID,
+    #         "transform_artifact_location": TRANSFORM_ARTIFACT_LOCATION,
+    #     },
+    #     ip_configuration="WORKER_IP_PRIVATE",
+    # ).after(dataflow_train_wait_op)
 
-    dataflow_eval_batch_op.after(dataflow_train_wait_op)
+    # dataflow_eval_wait_op = WaitGcpResourcesOp(gcp_resources=dataflow_eval_batch_op.outputs["gcp_resources"])
 
-    dataflow_eval_wait_op = WaitGcpResourcesOp(
-        gcp_resources=dataflow_eval_batch_op.outputs["gcp_resources"]
-    )
-
-    command = [
-        "python",
-        "/app/main.py"
-    ]
-    args = [
-        "--train_file_path",
-        f"gs://{PROJECT}_dataflow_demo1/TFRecords/{JOB_ID}/"
-    ]
-
-    # The spec of the worker pools including machine type and Docker image
-    worker_pool_specs = [
-        {
-            "machine_spec": {
-                "machine_type": "n1-standard-16",
-            },
-            "replica_count": 1,
-            "container_spec": {
-                "image_uri": f"europe-west3-docker.pkg.dev/{PROJECT}/ml-demo1/train:latest",
-                "command": command,
-                "args": args},
-        }
-    ]
-
-    # List serialized from the dictionary representing metrics to optimize.
-    # The dictionary key is the metric_id, which is reported by your training job,
-    # and the dictionary value is the optimization goal of the metric.
-    study_spec_metrics = hyperparameter_tuning_job.serialize_metrics({"loss": "minimize"})
-
-    # List serialized from the parameter dictionary. The dictionary
-    # represents parameters to optimize. The dictionary key is the parameter_id,
-    # which is passed into your training job as a command line key word argument, and the
-    # dictionary value is the parameter specification of the metric.
-    study_spec_parameters = hyperparameter_tuning_job.serialize_parameters(
-        {
-            "learning_rate": aiplatform.hyperparameter_tuning.DoubleParameterSpec(
-                min=0.001, max=1, scale="log"
-            ),
-            "dropout_rate": aiplatform.hyperparameter_tuning.DoubleParameterSpec(
-                min=0.05, max=0.3, scale="linear"
-            ),
-        }
-    )
-
-    tuning_op = HyperparameterTuningJobRunOp(
-        display_name="hpt_demo1",
-        project=project,
-        location=region,
-        worker_pool_specs=worker_pool_specs,
-        study_spec_metrics=study_spec_metrics,
-        study_spec_parameters=study_spec_parameters,
+    tuning_op, study_spec_metrics = components.get_hyperparametertuning_op(
+        project_id=PROJECT_ID,
+        job_id=JOB_ID,
+        region=REGION,
         max_trial_count=max_trial_count,
         parallel_trial_count=parallel_trial_count,
         base_output_directory=base_output_directory,
     )
 
-    tuning_op.after(dataflow_train_wait_op)
+    # tuning_op.after(dataflow_train_wait_op)
 
-    best_trial_op = get_best_trial_op(
-        gcp_resources=tuning_op.outputs["gcp_resources"], study_spec_metrics=study_spec_metrics
-    )
+    # best_trial_op = components.get_best_trial_op(
+    #     gcp_resources=tuning_op.outputs["gcp_resources"], study_spec_metrics=study_spec_metrics
+    # )
 
-    model_dir_op = model_dir(base_output_directory=base_output_directory,
-                             best_trial=best_trial_op.outputs['Output'])
+    # model_dir_op = components.get_model_dir(
+    #     base_output_directory=base_output_directory, best_trial=best_trial_op.outputs["Output"]
+    # )
 
-    unmanaged_model_importer = dsl.importer(
-        artifact_uri=model_dir_op.outputs['Output'],
-        artifact_class=artifact_types.UnmanagedContainerModel,
-        metadata={
-            'containerSpec': {
-                'imageUri': DEPLOY_IMAGE
-            }
-        }
-    )
+    # unmanaged_model_importer = dsl.importer(
+    #     artifact_uri=model_dir_op.outputs["Output"],
+    #     artifact_class=artifact_types.UnmanagedContainerModel,
+    #     metadata={"containerSpec": {"imageUri": DEPLOY_IMAGE}},
+    # )
 
-    model_upload_op = ModelUploadOp(
-        display_name=display_name,
-        unmanaged_container_model=unmanaged_model_importer.outputs['artifact'],
-        project=PROJECT,
-        location=REGION,
-    )
+    # model_upload_op = ModelUploadOp(
+    #     display_name=display_name,
+    #     unmanaged_container_model=unmanaged_model_importer.outputs["artifact"],
+    #     project=PROJECT_ID,
+    #     location=REGION,
+    # )
 
-    batch_prediction_op = ModelBatchPredictOp(job_display_name='batch_prediction_for_eval',
-                                              model=model_upload_op.outputs["model"],
-                                              location=REGION,
-                                              instances_format='jsonl',
-                                              predictions_format='jsonl',
-                                              gcs_source_uris=[f"gs://{PROJECT}_dataflow_demo1/jsonl_files/{JOB_ID}.jsonl"],
-                                              instance_type='tf-record',
-                                              included_fields=['dense_input'],
-                                              gcs_destination_output_uri_prefix=f"gs://{PROJECT}-ml-demo1/",
-                                              machine_type='n1-standard-2',
-                                              max_replica_count=1,
-                                              generate_explanation=False,
-                                              project=PROJECT,
-                                              )
-    batch_prediction_op.after(dataflow_eval_wait_op)
+    # batch_prediction_op = ModelBatchPredictOp(
+    #     job_display_name="batch_prediction_for_eval",
+    #     model=model_upload_op.outputs["model"],
+    #     location=REGION,
+    #     instances_format="jsonl",
+    #     predictions_format="jsonl",
+    #     gcs_source_uris=[f"gs://bt-int-ml-specialization_dataflow_demo1/jsonl_files/{JOB_ID}.jsonl"],
+    #     instance_type="tf-record",
+    #     included_fields=["dense_input"],
+    #     gcs_destination_output_uri_prefix="gs://bt-int-ml-specialization-ml-demo1/",
+    #     machine_type="n1-standard-2",
+    #     max_replica_count=1,
+    #     generate_explanation=False,
+    #     project=PROJECT_ID,
+    # ).after(dataflow_eval_wait_op)
 
-    model_evaluation_op = ModelEvaluationRegressionOp(target_field_name='fare',
-                                                      model=model_upload_op.outputs["model"],
-                                                      location=REGION,
-                                                      predictions_format='jsonl',
-                                                      predictions_gcs_source=batch_prediction_op.outputs['gcs_output_directory'],
-                                                      ground_truth_format='jsonl',
-                                                      prediction_score_column='prediction',
-                                                      dataflow_service_account=f"d1-dataflow-batch-runner@{PROJECT}.iam.gserviceaccount.com",
-                                                      dataflow_machine_type='n1-standard-2',
-                                                      dataflow_workers_num=1,
-                                                      dataflow_max_workers_num=1,
-                                                      dataflow_subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
-                                                      dataflow_use_public_ips=False,
-                                                      project=PROJECT)
+    # _ = ModelEvaluationRegressionOp(
+    #     target_field_name="fare",
+    #     model=model_upload_op.outputs["model"],
+    #     location=REGION,
+    #     predictions_format="jsonl",
+    #     predictions_gcs_source=batch_prediction_op.outputs["gcs_output_directory"],
+    #     ground_truth_format="jsonl",
+    #     prediction_score_column="prediction",
+    #     dataflow_service_account="d1-dataflow-batch-runner@bt-int-ml-specialization.iam.gserviceaccount.com",
+    #     dataflow_machine_type="n1-standard-2",
+    #     dataflow_workers_num=1,
+    #     dataflow_max_workers_num=1,
+    #     dataflow_subnetwork=SUBNET,
+    #     dataflow_use_public_ips=False,
+    #     project=PROJECT_ID,
+    # )
 
-    endpoint_importer = dsl.importer(
-        artifact_uri=ENDPOINT_URI,
-        artifact_class=artifact_types.VertexEndpoint,
-        metadata={
-            "resourceName": ENDPOINT_NAME
-        }
-    ).output
+    # endpoint_importer = dsl.importer(
+    #     artifact_uri=ENDPOINT_URI,
+    #     artifact_class=artifact_types.VertexEndpoint,
+    #     metadata={"resourceName": ENDPOINT_NAME},
+    # )
 
-    model_deploy_op = ModelDeployOp(
-        model=model_upload_op.outputs["model"],
-        endpoint=endpoint_importer,
-        dedicated_resources_machine_type="n1-standard-2",
-        dedicated_resources_min_replica_count=1,
-        dedicated_resources_max_replica_count=1,
-        service_account=f"ml-demo1-predictor@{PROJECT}.iam.gserviceaccount.com",
-    )
+    # model_deploy_op = ModelDeployOp(
+    #     model=model_upload_op.outputs["model"],
+    #     endpoint=endpoint_importer.output,
+    #     dedicated_resources_machine_type="n1-standard-2",
+    #     dedicated_resources_min_replica_count=1,
+    #     dedicated_resources_max_replica_count=1,
+    #     service_account=f"ml-demo1-predictor@{PROJECT_ID}.iam.gserviceaccount.com",
+    # )
 
-    # Launch the Dataflow Flex Template job
-    dataflow_inf_op = DataflowFlexTemplateJobOp(
-        enable_streaming_engine=True,
-        ip_configuration='WORKER_IP_PRIVATE',
-        num_workers=1,
-        max_workers=1,
-        parameters={'project_id': PROJECT,
-                    'pubsub_sink_topic': PUBSUB_SINK_TOPIC,
-                    'pubsub_source_subscription': PUBSUB_SOURCE_SUBSCRIPTION,
-                    'transform_artifact_location': TRANSFORM_ARTIFACT_LOCATION,
-                    'endpoint_name': ENDPOINT_NAME},
-        project=PROJECT,
-        location=REGION,
-        service_account_email=f"d1-dataflow-inference-runner@{PROJECT}.iam.gserviceaccount.com",
-        container_spec_gcs_path=f'gs://{PROJECT}_dataflow_demo1/templates/demo1-inference.json',
-        job_name='demo1-inference',
-        staging_location=f"gs://{PROJECT}_dataflow_demo1/inference/staging",
-        subnetwork=f"https://www.googleapis.com/compute/v1/projects/{PROJECT}/regions/{REGION}/subnetworks/default-{REGION}",
-        temp_location=f"gs://{PROJECT}_dataflow_demo1/inference/temp",
-        machine_type="n1-standard-2"
-    )
-
-    dataflow_inf_op.after(model_deploy_op)
+    # _ = DataflowFlexTemplateJobOp(
+    #     enable_streaming_engine=True,
+    #     ip_configuration="WORKER_IP_PRIVATE",
+    #     num_workers=1,
+    #     max_workers=1,
+    #     parameters={
+    #         "project_id": PROJECT_ID,
+    #         "pubsub_sink_topic": PUBSUB_SINK_TOPIC,
+    #         "pubsub_source_subscription": PUBSUB_SOURCE_SUBSCRIPTION,
+    #         "transform_artifact_location": TRANSFORM_ARTIFACT_LOCATION,
+    #         "endpoint_name": ENDPOINT_NAME,
+    #     },
+    #     project=PROJECT_ID,
+    #     location=REGION,
+    #     service_account_email=f"d1-dataflow-inference-runner@{PROJECT_ID}.iam.gserviceaccount.com",
+    #     container_spec_gcs_path=f"gs://{PROJECT_ID}_dataflow_demo1/templates/demo1-inference.json",
+    #     job_name="demo1-inference",
+    #     staging_location=f"gs://{PROJECT_ID}_dataflow_demo1/inference/staging",
+    #     subnetwork=SUBNET,
+    #     temp_location=f"gs://{PROJECT_ID}_dataflow_demo1/inference/temp",
+    #     machine_type="n1-standard-2",
+    # ).after(model_deploy_op)
 
 
 def run_pipeline():
     pipeline_file_path = str(CURRENT_DIR / "pipeline.json")
-    compiler.Compiler().compile(pipeline, pipeline_file_path)
+    compiler.Compiler().compile(pipeline, pipeline_file_path)  # type: ignore
 
     run = aiplatform.PipelineJob(
-        project=PROJECT,
+        project=PROJECT_ID,
         location=REGION,
         display_name="demo1",
         template_path=pipeline_file_path,
@@ -313,10 +213,10 @@ def run_pipeline():
         pipeline_root=PIPELINE_ROOT,
     )
 
-    aiplatform.init(project=PROJECT, location=REGION, experiment="demo1-wine-exp")
+    aiplatform.init(project=PROJECT_ID, location=REGION, experiment="demo1-wine-exp")
 
     run.submit(
-        service_account=f"ml-demo1-executor@{PROJECT}.iam.gserviceaccount.com",
+        service_account=f"ml-demo1-executor@{PROJECT_ID}.iam.gserviceaccount.com",
         experiment="demo1-exp",
     )
     return run
