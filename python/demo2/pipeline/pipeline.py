@@ -25,10 +25,7 @@ PIPELINE_ROOT = "gs://bt-int-ml-specialization-ml-demo2"
 CURRENT_DIR = Path(__file__).parent
 
 
-@dsl.pipeline(
-    name='Vertex AI demo',
-    description='Vertex AI demo'
-)
+@dsl.pipeline(name="Vertex AI demo", description="Vertex AI demo")
 def pipeline(
     display_name: str,
     data_dir: str,
@@ -132,8 +129,7 @@ def run_pipeline():
         },
     )
 
-    aiplatform.init(project=PROJECT, location=REGION,
-                    experiment="demo2-black-friday-exp")
+    aiplatform.init(project=PROJECT, location=REGION, experiment="demo2-black-friday-exp")
 
     run.submit(
         service_account=f"ml-demo2-executor@{PROJECT}.iam.gserviceaccount.com",
